@@ -1,0 +1,28 @@
+name: desktop
+on:
+  push:
+    paths: ['desktop/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run: { shell: bash, working-directory: desktop }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: ./build.sh
+      - run: npm install && npx electron-builder --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FLASHApp-${{ matrix.os }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.AppImage
+            desktop/dist/*.exe

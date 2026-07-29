@@ -1,0 +1,78 @@
+const { app, BrowserWindow, shell, dialog } = require('electron')
+const { spawn } = require('child_process')
+const path = require('path')
+const fs = require('fs')
+const net = require('net')
+const http = require('http')
+
+const RES = app.isPackaged ? process.resourcesPath : __dirname
+const WIN = process.platform === 'win32'
+const PY = WIN ? path.join(RES, 'runtime', 'python.exe') : path.join(RES, 'runtime', 'bin', 'python3')
+const ENTRY = process.env.STREAMLIT_ENTRY || 'app.py'
+
+let py = null
+
+// The app writes workspaces to ../workspaces-* relative to its cwd, so it cannot run
+// from the read-only resource dir. Copy it into userData on first run / version bump.
+function stageApp () {
+  const dst = path.join(app.getPath('userData'), 'app')
+  if (!app.isPackaged) return path.join(RES, 'app')
+  const stamp = path.join(app.getPath('userData'), '.staged-version')
+  const cur = fs.existsSync(stamp) ? fs.readFileSync(stamp, 'utf8') : ''
+  if (cur !== app.getVersion()) {
+    fs.rmSync(dst, { recursive: true, force: true })
+    fs.cpSync(path.join(RES, 'app'), dst, { recursive: true })
+    fs.writeFileSync(stamp, app.getVersion())
+  }
+  return dst
+}
+
+const freePort = () => new Promise(res => {
+  const s = net.createServer()
+  s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => res(p)) })
+})
+
+const waitFor = (url, tries = 900) => new Promise((res, rej) => {
+  const tick = () => http.get(url, r => { r.resume(); res() })
+    .on('error', () => tries-- > 0 ? setTimeout(tick, 100) : rej(new Error('server did not start')))
+  tick()
+})
+
+async function start () {
+  const cwd = stageApp()
+  const port = await freePort()
+  const url = `http://127.0.0.1:${port}`
+
+  py = spawn(PY, ['-m', 'streamlit', 'run', ENTRY,
+    '--server.port', String(port),
+    '--server.address', '127.0.0.1',
+    '--server.headless', 'true',
+    '--server.fileWatcherType', 'none',
+    '--browser.gatherUsageStats', 'false'
+  ], {
+    cwd,
+    // TOPP tools (FLASHDeconv, ...) are looked up on PATH by the app's CommandExecutor.
+    // OPENMS_DATA_PATH from a developer shell would override our bundled share dir.
+    env: { ...process.env, OPENMS_DATA_PATH: undefined, PATH: path.join(RES, 'topp') + path.delimiter + process.env.PATH }
+  })
+
+  let log = ''
+  const keep = d => { log = (log + d).slice(-4000) }
+  py.stdout.on('data', keep)
+  py.stderr.on('data', keep)
+
+  try {
+    await waitFor(url)
+  } catch (e) {
+    dialog.showErrorBox('Failed to start', log || String(e))
+    return app.quit()
+  }
+
+  const win = new BrowserWindow({ width: 1500, height: 950, title: app.getName() })
+  win.loadURL(url)
+  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' } })
+}
+
+app.whenReady().then(start)
+app.on('window-all-closed', () => app.quit())
+app.on('quit', () => py && py.kill())

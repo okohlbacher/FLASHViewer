@@ -1,0 +1,4 @@
+# pyopenms 3.5.0 macOS wheels ship two OpenMP runtimes and abort on import
+pyopenms==3.4.0
+# FLASHViewer imports the private streamlit.source_util.calc_md5, removed in 1.43
+streamlit==1.42.2
