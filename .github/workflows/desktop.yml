@@ -34,6 +34,8 @@ jobs:
           [ -n "$SIGNPATH" ] && echo "win=true" >> $GITHUB_OUTPUT || echo "win=false" >> $GITHUB_OUTPUT
 
       - run: ./build.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build installer
         env:

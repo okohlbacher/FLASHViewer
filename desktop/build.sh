@@ -22,11 +22,19 @@ if [ ! -d runtime ]; then
     MINGW*|MSYS*|CYGWIN*) TRIPLE=x86_64-pc-windows-msvc ;;
     *) echo "unsupported platform: $(uname -sm)" >&2; exit 1 ;;
   esac
-  curl -sS https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest -o pbs.json
+  # Anonymous api.github.com is rate limited per IP, which CI runners share, so
+  # authenticate when a token is around. The failure is a JSON error object with
+  # no "assets" key, hence the explicit check below.
+  AUTH=()
+  [ -n "${GITHUB_TOKEN:-}" ] && AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN")
+  curl -sS "${AUTH[@]}" https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest -o pbs.json
   URL=$(python3 -c "
-import json
+import json,sys
+d=json.load(open('pbs.json'))
+if 'assets' not in d:
+    sys.exit('github api: %s' % d.get('message', d))
 suffix='-$TRIPLE-install_only.tar.gz'
-a=[x['browser_download_url'] for x in json.load(open('pbs.json'))['assets']
+a=[x['browser_download_url'] for x in d['assets']
    if x['name'].startswith('cpython-$PYVER.') and x['name'].endswith(suffix)]
 print(a[0] if a else '')")
   rm -f pbs.json
