@@ -8,7 +8,11 @@ OPENMS_BIN=${OPENMS_BIN:-}   # point at an OpenMS bin/ dir to bundle the TOPP to
 
 # The payload is this repo at HEAD; git archive keeps untracked files and .git out.
 rm -rf app && mkdir app
-git -C .. archive HEAD | tar x -C app
+# Not piped into tar: tar stops at the end-of-archive marker and closes the pipe
+# while git is still writing its trailing padding, so pipefail sees SIGPIPE.
+git -C .. archive HEAD -o "$PWD/app.tar"   # -o is relative to -C, so spell it out
+tar -x -f app.tar -C app
+rm app.tar
 rm -rf app/desktop app/example-data   # 101 MB of samples, not worth shipping
 
 if [ ! -d runtime ]; then
@@ -39,7 +43,10 @@ a=[x['browser_download_url'] for x in d['assets']
 print(a[0] if a else '')")
   rm -f pbs.json
   [ -n "$URL" ] || { echo "no portable python $PYVER for $TRIPLE" >&2; exit 1; }
-  mkdir runtime && curl -sSL "$URL" | tar xz -C runtime --strip-components=1
+  mkdir runtime
+  curl -sSL "$URL" -o runtime.tar.gz
+  tar -x -z -f runtime.tar.gz -C runtime --strip-components=1
+  rm runtime.tar.gz
 fi
 
 PY=runtime/bin/python3
