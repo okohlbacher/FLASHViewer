@@ -13,8 +13,20 @@ npm start               # dev run
 npx electron-builder    # .dmg / .exe / .AppImage for the host OS
 ```
 
-Installers must be built on their target OS; `.github/workflows/desktop.yml`
-does that on a three-OS matrix.
+Installers must be built on their target OS and architecture — there is no
+cross-compiling, because each build downloads a portable CPython for its own
+platform. `.github/workflows/desktop.yml` covers five targets:
+
+| Target | Runner | Output |
+|---|---|---|
+| macOS arm64 | `macos-14` | `.dmg` |
+| macOS x64 | `macos-13` | `.dmg` |
+| Linux x64 | `ubuntu-24.04` | `.AppImage` |
+| Linux arm64 | `ubuntu-24.04-arm` | `.AppImage` |
+| Windows x64 | `windows-2022` | `.exe` |
+
+Pushing a `desktop-v*` tag runs the same matrix and collects every installer into
+a **draft** GitHub release, which you then review and publish by hand.
 
 ## How it works
 
@@ -36,8 +48,10 @@ Two details worth knowing:
 
 Both are upstream issues this build has to work around:
 
-- `pyopenms==3.4.0` — the 3.5.0 macOS wheels ship both `libomp.dylib` and
-  `libgomp.1.dylib`; importing pyopenms aborts with `OMP: Error #15`.
+- `pyopenms==3.4.0` on macOS only — the 3.5.0 macOS wheels ship both
+  `libomp.dylib` and `libgomp.1.dylib`, and importing pyopenms aborts with
+  `OMP: Error #15`. The pin carries a `sys_platform == "darwin"` marker because
+  3.4.0 has no linux-aarch64 wheel; Linux and Windows get 3.5.0.
 - `streamlit==1.42.2` — `src/common/captcha_.py` imports the private
   `streamlit.source_util.calc_md5`, removed in Streamlit 1.43. `requirements.txt`
   says `streamlit>=1.39.0` with no upper bound, so a fresh install picks 1.60 and

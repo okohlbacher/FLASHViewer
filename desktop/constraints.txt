@@ -1,4 +1,8 @@
-# pyopenms 3.5.0 macOS wheels ship two OpenMP runtimes and abort on import
-pyopenms==3.4.0
-# FLASHViewer imports the private streamlit.source_util.calc_md5, removed in 1.43
+# The 3.5.0 macOS wheels ship both libomp.dylib and libgomp.1.dylib; importing
+# pyopenms aborts with "OMP: Error #15". 3.4.0 predates that but has no
+# linux-aarch64 wheel, so pin it only where the bug actually is.
+pyopenms==3.4.0; sys_platform == "darwin"
+
+# src/common/captcha_.py imports the private streamlit.source_util.calc_md5,
+# removed in Streamlit 1.43. requirements.txt has no upper bound.
 streamlit==1.42.2
