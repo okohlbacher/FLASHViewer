@@ -20,7 +20,7 @@ platform. `.github/workflows/desktop.yml` covers five targets:
 | Target | Runner | Output |
 |---|---|---|
 | macOS arm64 | `macos-14` | `.dmg` |
-| macOS x64 | `macos-13` | `.dmg` |
+
 | Linux x64 | `ubuntu-24.04` | `.AppImage` |
 | Linux arm64 | `ubuntu-24.04-arm` | `.AppImage` |
 | Windows x64 | `windows-2022` | `.exe` |
