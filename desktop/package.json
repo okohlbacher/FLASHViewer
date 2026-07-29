@@ -14,14 +14,41 @@
   "build": {
     "appId": "org.openms.flashapp",
     "productName": "FLASHApp",
-    "files": ["main.js", "package.json"],
-    "extraResources": [
-      { "from": "app", "to": "app" },
-      { "from": "runtime", "to": "runtime" },
-      { "from": "topp", "to": "topp" }
+    "files": [
+      "main.js",
+      "package.json"
     ],
-    "mac": { "target": "dmg", "identity": null },
-    "win": { "target": "nsis" },
-    "linux": { "target": "AppImage", "category": "Science" }
+    "extraResources": [
+      {
+        "from": "app",
+        "to": "app"
+      },
+      {
+        "from": "runtime",
+        "to": "runtime"
+      },
+      {
+        "from": "topp",
+        "to": "topp"
+      }
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.education",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "resources/entitlements.mac.plist",
+      "entitlementsInherit": "resources/entitlements.mac.plist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Science"
+    },
+    "directories": {
+      "buildResources": "resources"
+    }
   }
 }

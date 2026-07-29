@@ -43,13 +43,77 @@ Both are upstream issues this build has to work around:
   says `streamlit>=1.39.0` with no upper bound, so a fresh install picks 1.60 and
   every page raises `ImportError`.
 
+## Signing
+
+Signing happens in CI only. No key is ever stored in the repo or on the runner.
+Both platforms are wired up and stay dormant until the secrets exist — without
+them the workflow still produces working unsigned installers.
+
+### macOS — Apple Developer ID
+
+Five repository secrets, all consumed directly by electron-builder:
+
+| Secret | What |
+|---|---|
+| `MACOS_CERTIFICATE_BASE64` | Developer ID Application cert+key, `.p12` export, base64 |
+| `MACOS_CERTIFICATE_PASSWORD` | password of that `.p12` |
+| `MACOS_APPLE_ID` | Apple ID used for notarization |
+| `MACOS_TEAM_ID` | Apple Developer Team ID |
+| `MACOS_NOTARY_PASSWORD` | app-specific password for `notarytool` |
+
+electron-builder does the keychain dance, `codesign`, `notarytool submit` and
+stapling itself; the workflow only sets the environment and adds
+`--config.mac.notarize=true`.
+
+`resources/entitlements.mac.plist` is the part specific to shipping an interpreter.
+Hardened runtime otherwise refuses to load `pyopenms`, `numpy` and `pyarrow`,
+which are signed by their own publishers rather than by us, and refuses CPython's
+writable-executable pages. Dropping `disable-library-validation` in particular
+will produce an app that passes notarization and then crashes on first import.
+
+Verify a build with:
+
+```bash
+codesign --verify --deep --strict --verbose=2 dist/mac-arm64/FLASHApp.app
+spctl -a -vv dist/mac-arm64/FLASHApp.app
+```
+
+### Windows — SignPath Foundation
+
+Two repository secrets, `SIGNPATH_API_TOKEN` and `SIGNPATH_ORG_ID`. The private
+key stays in SignPath's HSM; there is no `.pfx` anywhere and nothing to back up.
+
+This needs the project registered in a SignPath organization first — the workflow
+assumes project slug `flashapp`, artifact configuration `initial`, signing policy
+`release-signing`. Two things to get right in the console:
+
+- The artifact configuration must expect a **ZIP**, because `upload-artifact`
+  always zips. A bare `<pe-file>` fails with *"file does not correspond to the
+  specified file type"*:
+  ```xml
+  <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+    <zip-file><pe-file path="*.exe"><authenticode-sign /></pe-file></zip-file>
+  </artifact-configuration>
+  ```
+- The release policy requires a human to approve each request in SignPath →
+  Signing Requests. `wait-for-completion: true` means the job blocks until someone
+  clicks Approve, so be at the keyboard for a real release.
+
+Validate the pipeline with the `test-signing` policy first. Test-cert signatures
+chain to a non-public root and are *not* Windows-trusted — they prove the
+pipeline works, not that the binary is shippable.
+
+### Local builds
+
+Unsigned, deliberately:
+
+```bash
+CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder
+```
+
 ## Not done yet
 
-- Code signing and notarization. macOS shows "damaged and can't be opened" for
-  downloaded unsigned bundles; Windows SmartScreen warns. Needs a Developer ID
-  and hardened-runtime entitlements for the bundled interpreter.
-- App icon (the default Electron icon is used).
-- Auto-update.
+Auto-update.
 
 ## Why not stlite/WASM
 

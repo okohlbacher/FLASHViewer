@@ -17,8 +17,64 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
+
+      # secrets.* is illegal inside if:, so map presence to a step output instead.
+      - id: gate
+        env:
+          MAC_CERT: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          [ -n "$MAC_CERT" ] && echo "mac=true" >> $GITHUB_OUTPUT || echo "mac=false" >> $GITHUB_OUTPUT
+          [ -n "$SIGNPATH" ] && echo "win=true" >> $GITHUB_OUTPUT || echo "win=false" >> $GITHUB_OUTPUT
+
       - run: ./build.sh
-      - run: npm install && npx electron-builder --publish never
+
+      - name: Build installer
+        env:
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.gate.outputs.mac }}
+        run: |
+          npm install
+          if [ "$RUNNER_OS" = "macOS" ] && [ "${{ steps.gate.outputs.mac }}" = "true" ]; then
+            npx electron-builder --publish never --config.mac.notarize=true
+          else
+            npx electron-builder --publish never
+          fi
+
+      - name: Verify macOS signature
+        if: runner.os == 'macOS' && steps.gate.outputs.mac == 'true'
+        run: |
+          APP="dist/mac-arm64/FLASHApp.app"
+          [ -d "$APP" ] || APP="dist/mac/FLASHApp.app"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          spctl -a -vv "$APP"
+
+      # SignPath keeps the private key in its HSM; the runner never sees a cert.
+      # upload-artifact always zips, so the SignPath artifact configuration must be
+      # <zip-file><pe-file path="*.exe"><authenticode-sign/></pe-file></zip-file>.
+      - name: Upload unsigned exe for signing
+        id: upload
+        if: runner.os == 'Windows' && steps.gate.outputs.win == 'true'
+        uses: actions/upload-artifact@v4
+        with: { name: unsigned-exe, path: desktop/dist/*.exe }
+
+      - name: Sign with SignPath
+        if: runner.os == 'Windows' && steps.gate.outputs.win == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORG_ID }}
+          project-slug: flashapp
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: initial
+          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: desktop/dist-signed
+
       - uses: actions/upload-artifact@v4
         with:
           name: FLASHApp-${{ matrix.os }}
@@ -26,3 +82,4 @@ jobs:
             desktop/dist/*.dmg
             desktop/dist/*.AppImage
             desktop/dist/*.exe
+            desktop/dist-signed/*.exe
