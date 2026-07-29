@@ -15,15 +15,17 @@ npx electron-builder    # .dmg / .exe / .AppImage for the host OS
 
 Installers must be built on their target OS and architecture — there is no
 cross-compiling, because each build downloads a portable CPython for its own
-platform. `.github/workflows/desktop.yml` covers five targets:
+platform. `.github/workflows/desktop.yml` covers four targets:
 
 | Target | Runner | Output |
 |---|---|---|
 | macOS arm64 | `macos-14` | `.dmg` |
-
 | Linux x64 | `ubuntu-24.04` | `.AppImage` |
 | Linux arm64 | `ubuntu-24.04-arm` | `.AppImage` |
 | Windows x64 | `windows-2022` | `.exe` |
+
+Intel macOS is not built: those runners queue for hours, and Apple Silicon Macs
+run the arm64 build natively while Intel Macs can run it under Rosetta.
 
 Pushing a `desktop-v*` tag runs the same matrix and collects every installer into
 a **draft** GitHub release, which you then review and publish by hand.
