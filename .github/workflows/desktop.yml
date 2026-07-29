@@ -50,6 +50,11 @@ jobs:
           if [ "$RUNNER_OS" = "macOS" ] && [ "${{ steps.gate.outputs.mac }}" = "true" ]; then
             npx electron-builder --publish never --config.mac.notarize=true
           else
+            # An absent secret still arrives as an empty string, and electron-builder
+            # reads an empty CSC_LINK as "a cert was supplied", then fails resolving
+            # it against the project dir: "<projectDir> not a file".
+            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
             npx electron-builder --publish never
           fi
 
