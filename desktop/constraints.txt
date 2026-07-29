@@ -3,6 +3,7 @@
 # linux-aarch64 wheel, so pin it only where the bug actually is.
 pyopenms==3.4.0; sys_platform == "darwin"
 
-# src/common/captcha_.py imports the private streamlit.source_util.calc_md5,
-# removed in Streamlit 1.43. requirements.txt has no upper bound.
-streamlit==1.42.2
+# Streamlit is deliberately unpinned. It used to be held at 1.42.2 because
+# src/common/captcha_.py imported four private streamlit.source_util symbols
+# that 1.43 removed — but the functions using them were dead code, so deleting
+# them lifted the ceiling. Verified running on 1.60.

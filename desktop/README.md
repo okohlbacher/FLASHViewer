@@ -48,16 +48,25 @@ Two details worth knowing:
 
 ## Pins (`constraints.txt`)
 
-Both are upstream issues this build has to work around:
-
 - `pyopenms==3.4.0` on macOS only — the 3.5.0 macOS wheels ship both
   `libomp.dylib` and `libgomp.1.dylib`, and importing pyopenms aborts with
   `OMP: Error #15`. The pin carries a `sys_platform == "darwin"` marker because
   3.4.0 has no linux-aarch64 wheel; Linux and Windows get 3.5.0.
-- `streamlit==1.42.2` — `src/common/captcha_.py` imports the private
-  `streamlit.source_util.calc_md5`, removed in Streamlit 1.43. `requirements.txt`
-  says `streamlit>=1.39.0` with no upper bound, so a fresh install picks 1.60 and
-  every page raises `ImportError`.
+
+Streamlit is no longer pinned. It was held at 1.42.2 because `captcha_.py`
+imported four private `streamlit.source_util` symbols removed in 1.43 — but
+nothing called the functions that used them, so deleting 167 lines of dead code
+lifted the ceiling. The app is verified running on 1.60, which matters beyond
+housekeeping: `st.navigation(position="top")` landed in 1.46, so a top header
+bar is now a native primitive rather than CSS injection against Streamlit's
+internals.
+
+## Captcha
+
+Off outside a public deployment. `captcha_control()` returns immediately unless
+`settings.json` sets `online_deployment: true`, so desktop and local installs
+never see it. This was previously true only as a side effect of `page_setup()`
+presetting `controllo`; it is now explicit.
 
 ## Signing
 
