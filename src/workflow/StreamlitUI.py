@@ -262,15 +262,27 @@ class StreamlitUI:
                     "This means that the original files will be used instead. "
                 )
 
+        if isinstance(fallback, str):
+            fallback = [fallback]
+        # The desktop build strips example-data/ from the payload (101 MB of
+        # samples), so the fallback files may simply not exist. Copying them
+        # unconditionally raised FileNotFoundError before the page could render,
+        # which left desktop with no way to add input data at all.
+        available_fallback = [f for f in (fallback or []) if Path(f).exists()]
+
         if fallback and not any([f for f in Path(files_dir).iterdir() if f.name != "external_files.txt"]):
-            if isinstance(fallback, str):
-                fallback = [fallback]
-            for f in fallback:
-                c1, _ = st.columns(2)
-                if not Path(files_dir, f).exists():
+            c1, _ = st.columns(2)
+            for f in available_fallback:
+                if not Path(files_dir, Path(f).name).exists():
                     shutil.copy(f, Path(files_dir, Path(f).name))
             current_files = [f.name for f in files_dir.iterdir() if f.name != "external_files.txt"]
-            c1.warning("**No data yet. Using example data file(s).**")
+            if available_fallback:
+                c1.warning("**No data yet. Using example data file(s).**")
+            else:
+                c1.info(
+                    "**No data yet.** This build does not ship example data — "
+                    "add your own files above to get started."
+                )
         else:
             if files_dir.exists():
                 current_files = [
@@ -1122,7 +1134,17 @@ class StreamlitUI:
         citation_position = 3
 
         url = f"https://github.com/{st.session_state.settings['github-user']}/{st.session_state.settings['repository-name']}"
-        tools = [p.stem for p in Path(self.parameter_manager.ini_dir).iterdir()]
+        # ini files only exist once a TOPP tool has written one. A build with no
+        # TOPP binaries — the desktop package without OPENMS_BIN — has none, and
+        # the joins below then raised IndexError on an empty list, taking down
+        # the whole Configure tab.
+        ini_dir = Path(self.parameter_manager.ini_dir)
+        tools = [p.stem for p in ini_dir.iterdir()] if ini_dir.exists() else []
+        if not tools:
+            return (
+                "No TOPP tools are available in this build, so no methods "
+                "description can be generated."
+            )
         tool_text = []
         cited_tools = []
         for tool in tools:

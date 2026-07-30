@@ -38,6 +38,20 @@ def main():
         assert copied.parent == cache / "files" / "run0", copied
         assert source.exists()
 
+        # The shape the pages ACTUALLY call: no remove=, so remove defaults to
+        # True. That must never delete a file outside our own storage — this is
+        # the exact regression that deleted users' raw mzML on desktop.
+        fm.store_file("run0b", "out_deconv_mzML", source)
+        assert source.exists(), "store_file() deleted the user's original file"
+
+        # ...but a file that IS ours may still be tidied up, or the workflow
+        # would leave its scratch copies behind.
+        ours = cache / "files" / "scratch.mzML"
+        ours.parent.mkdir(parents=True, exist_ok=True)
+        ours.write_bytes(b"scratch")
+        fm.store_file("run0c", "out_deconv_mzML", ours)
+        assert not ours.exists(), "our own scratch file was not cleaned up"
+
         # Explicit link: referenced, not copied.
         fm.store_file("run", "out_deconv_mzML", source, remove=True, link=True)
         stored = Path(fm.get_results("run", ["out_deconv_mzML"])["out_deconv_mzML"])
