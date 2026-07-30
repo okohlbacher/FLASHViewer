@@ -70,12 +70,12 @@ else:
                     # Show download button after ZIP file was created
                     with open(out_zip, 'rb') as f:
                         button_placeholder.download_button(
-                            "Download ⬇️", f, 
+                            "Download ", f, 
                             file_name = f'{experiment}.zip',
                             use_container_width=True
                         )
 
         with columns[2]:
-            if st.button(f"🗑️ {experiment}", use_container_width=True):
+            if st.button(f"{experiment}", use_container_width=True):
                 file_manager.remove_results(experiment)
                 st.rerun()

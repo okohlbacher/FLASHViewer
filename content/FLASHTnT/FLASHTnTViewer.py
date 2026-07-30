@@ -243,7 +243,7 @@ def select_experiment():
 
 params = page_setup("TaggerViewer")
 
-st.title('FLASHViewer')
+st.title('Viewer')
 
 # Get available results
 file_manager = FileManager(

@@ -15,7 +15,7 @@ wf = TagWorkflow()
 
 st.title('FLASHTnT - Tag and Extend')
 
-t = st.tabs(["📁 **File Upload**", "⚙️ **Configure**", "🚀 **Run**", "💡 **Manual Result Upload**"])
+t = st.tabs(["**File Upload**", "**Configure**", "**Run**", "**Manual Result Upload**"])
 with t[0]:
     wf.show_file_upload_section()
 
@@ -107,14 +107,14 @@ with t[3]:
         # Display info how to upload files
         st.info(
             """
-        **💡 How to upload files**
+        **How to upload files**
         
         1. Browse files on your computer or drag and drops files
         2. Click the **Add files to workspace** button to use them in the viewer
         
         Select data for analysis from the uploaded files shown below.
         
-        **💡 Make sure that the same number of deconvolved and annotated mzML and FLASHTagger output files files are uploaded!**
+        **Make sure that the same number of deconvolved and annotated mzML and FLASHTagger output files files are uploaded!**
         """
         )
         if DESKTOP:
@@ -187,7 +187,7 @@ with t[3]:
     st.dataframe(pd.DataFrame(table))
 
    # Remove files
-    with st.expander("🗑️ Remove mzML files"):
+    with st.expander("Remove mzML files"):
         to_remove = st.multiselect(
             "select files", options=experiments
         )
@@ -199,7 +199,7 @@ with t[3]:
                 wf.file_manager.remove_results(dataset_id)
             st.rerun()
 
-        if c1.button("⚠️ Remove **all**"):
+        if c1.button("Remove **all**"):
             wf.file_manager.clear_cache()
             st.success("All files removed!")
             st.rerun()

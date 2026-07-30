@@ -248,7 +248,7 @@ def render_sidebar(page: str = "") -> None:
     params = load_params()
     with st.sidebar:
         # The main page has workspace switcher
-        with st.expander("🖥️ **Workspaces**"):
+        with st.expander("**Workspaces**"):
             # Define workspaces directory outside of repository
             workspaces_dir = Path("..", "workspaces-" + st.session_state.settings["repository-name"])
             # Online: show current workspace name in info text and option to change to other existing workspace
@@ -287,7 +287,7 @@ def render_sidebar(page: str = "") -> None:
                     time.sleep(1)
                     st.rerun()
                 # Remove existing workspace and fall back to default
-                if st.button("⚠️ Delete Workspace"):
+                if st.button("Delete Workspace"):
                     if path.exists():
                         shutil.rmtree(path)
                         st.session_state.workspace = Path(workspaces_dir, "default")
@@ -527,7 +527,7 @@ def desktop_file_picker(label: str, file_types: list[str], key: str):
         )
         return []
 
-    if not st.button(f"📁 {label}", key=key, type="primary"):
+    if not st.button(f"{label}", key=key, type="primary"):
         return []
 
     chosen = tk_file_dialog(

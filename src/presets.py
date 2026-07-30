@@ -37,6 +37,30 @@ PREREQUISITES = {
     },
 }
 
+# Human labels for the grid component ids, so the UI never shows a raw
+# identifier. Taken from the two layout managers' COMPONENT_OPTIONS, minus the
+# "(… needed)" suffixes, which PREREQUISITES now encodes properly.
+LABELS = {
+    "ms1_raw_heatmap": "MS1 raw heatmap",
+    "ms1_deconv_heat_map": "MS1 deconvolved heatmap",
+    "scan_table": "Scan table",
+    "deconv_spectrum": "Deconvolved spectrum",
+    "anno_spectrum": "Annotated spectrum",
+    "mass_table": "Mass table",
+    "3D_SN_plot": "3D S/N plot",
+    "fdr_plot": "QScore ECDF plot",
+    "protein_table": "Protein table",
+    "sequence_view": "Sequence view",
+    "internal_fragment_map": "Internal fragment map",
+    "tag_table": "Tag table",
+}
+
+
+def label(component):
+    """Readable name for a grid component id."""
+    return LABELS.get(component, component)
+
+
 # Cache fields a preset needs before it can render. Checked one at a time with
 # FileManager.result_exists(): get_results_list() silently drops columns that do
 # not exist yet, so an AND query over a missing field returns rows regardless.
@@ -219,6 +243,15 @@ def demo():
                     if comp in known:
                         continue  # tool-local by construction
         assert default_id(tool) is not None
+
+    # Every component any preset can show must have a readable label: a raw id
+    # leaking into the UI is the failure this guards.
+    for tool, presets in PRESETS.items():
+        for preset in presets:
+            rows, _ = expand_prerequisites(tool, preset["rows"])
+            for row in rows:
+                for comp in row:
+                    assert comp in LABELS, f"no label for {comp}"
 
     print("presets: all checks passed")
 

@@ -74,7 +74,11 @@ def render(tool, required_tags):
             head.caption(preset["description"])
 
             rows, _ = presets_mod.expand_prerequisites(tool, preset["rows"])
-            head.caption(" · ".join(" | ".join(row) for row in rows))
+            head.caption(
+                " · ".join(
+                    " | ".join(presets_mod.label(c) for c in row) for row in rows
+                )
+            )
 
             if available:
                 head.caption(":green[Available]")

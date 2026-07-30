@@ -97,16 +97,16 @@ with tabs[0]:
     # Display info how to upload files
     st.info(
         """
-    **💡 How to upload files**
+    **How to upload files**
     
     1. Browse files on your computer or drag and drops files
     2. Click the **Add the uploaded quant files** button to use them in the workflows
     
     Select data for analysis from the uploaded files shown below.
     
-    **💡 Make sure that the same number of FLASHQuant result files (\*fq.tsv and \*fq.mts.tsv) are uploaded!**
+    **Make sure that the same number of FLASHQuant result files (\*fq.tsv and \*fq.mts.tsv) are uploaded!**
     
-    **💡 To visualize conflict resolution, \*fq_shared.tsv files should be uploaded**
+    **To visualize conflict resolution, \*fq_shared.tsv files should be uploaded**
     """
     )
     if DESKTOP:
@@ -171,7 +171,7 @@ st.markdown('**Uploaded experiments in current workspace**')
 st.dataframe(pd.DataFrame(table))
 
 # Remove files
-with st.expander("🗑️ Remove mzML files"):
+with st.expander("Remove mzML files"):
     to_remove = st.multiselect(
         "select files", options=experiments
     )
@@ -183,7 +183,7 @@ with st.expander("🗑️ Remove mzML files"):
             wf.file_manager.remove_results(dataset_id)
         st.rerun()
 
-    if c1.button("⚠️ Remove **all**"):
+    if c1.button("Remove **all**"):
         wf.file_manager.clear_cache()
         st.success("All files removed!")
         st.rerun()

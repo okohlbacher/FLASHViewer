@@ -52,7 +52,7 @@ def captcha_control():
                     # Consent choice was made
                     st.rerun()
 
-        st.title("Make sure you are not a robot🤖")
+        st.title("Make sure you are not a robot")
 
         # define the session state for control if the captcha is correct
         st.session_state["controllo"] = False
@@ -85,7 +85,7 @@ def captcha_control():
                     st.rerun()
                 else:
                     # if the captcha is wrong, the controllo session state is set to False and the captcha is regenerated
-                    st.error("🚨 Captch is wrong")
+                    st.error("Captch is wrong")
                     del st.session_state["Captcha"]
                     del st.session_state["controllo"]
                     st.rerun()

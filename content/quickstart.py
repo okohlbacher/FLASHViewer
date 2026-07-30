@@ -5,7 +5,7 @@ from src.common.common import page_setup, v_space
 
 page_setup(page="main")
 
-st.markdown("# 👋 Quick Start")
+st.markdown("# Quick Start")
 st.markdown("## FLASHApp")
 
 
@@ -13,10 +13,10 @@ st.markdown("## FLASHApp")
 st.markdown('#### FLASHApp: A Platform for Your Favorite FLASH\* Tools!')
 
 st.info("""
-    **💡 How to run FLASHApp**
-    1. Go to the **⚙️ Workflow** page through the sidebar and run your analysis.\
-        OR, go to the **📁 File Upload** page through the sidebar and upload FLASHDeconv output files (\*_annotated.mzML & \*_deconv.mzML)
-    2. Click the **👀 Viewer** page on the sidebar to view the results in detail.
+    **How to run FLASHApp**
+    1. Go to the **Workflow** page through the sidebar and run your analysis.\
+        OR, go to the **File Upload** page through the sidebar and upload FLASHDeconv output files (\*_annotated.mzML & \*_deconv.mzML)
+    2. Click the **Viewer** page on the sidebar to view the results in detail.
     """)
 
 if Path("OpenMS-App.zip").exists():
@@ -48,5 +48,5 @@ if st.session_state.settings.get("online_deployment", False):
     whats_new.append(
         "- Want to save your progress or share it with your team? Simply bookmark / share the URL!"
     )
-c1.markdown("## ⭐ New\n\n" + "\n".join(whats_new) + "\n")
+c1.markdown("## New\n\n" + "\n".join(whats_new) + "\n")
 c2.image("assets/pyopenms_transparent_background.png", width=300)

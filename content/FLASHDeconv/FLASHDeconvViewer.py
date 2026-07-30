@@ -154,7 +154,7 @@ def select_experiment():
 # page initialization
 params = page_setup()
 
-st.title("FLASHViewer")
+st.title("Viewer")
 setSequenceViewInDefaultView()
 
 # Get available results

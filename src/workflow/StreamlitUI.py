@@ -143,7 +143,7 @@ class StreamlitUI:
             c1.write("\n")
             with c1.container(border=True):
                 dialog_button = st.button(
-                    rf"$\textsf{{\Large 📁 Add }} \textsf{{ \Large \textbf{{{name}}} }}$",
+                    rf"$\textsf{{\Large Add }} \textsf{{ \Large \textbf{{{name}}} }}$",
                     type="primary",
                     use_container_width=True,
                     key="local_browse_single",
@@ -187,7 +187,7 @@ class StreamlitUI:
                     st.write("\n")
                     st.write("\n")
                     dialog_button = st.button(
-                        "📁",
+                        "",
                         key=f"local_browse_{key}",
                         help="Browse for your local directory with MS data.",
                         disabled=not TK_AVAILABLE,
@@ -303,7 +303,7 @@ class StreamlitUI:
         if current_files:
             c1.info(f"Current **{name}** files:\n\n" + "\n\n".join(current_files))
             if c1.button(
-                f"🗑️ Clear **{name}** files.",
+                f"Clear **{name}** files.",
                 use_container_width=True,
                 key=f"remove-files-{key}",
             ):
@@ -942,7 +942,7 @@ class StreamlitUI:
 
         # Display a download button for the zip file in Streamlit
         c1.download_button(
-            label="⬇️ Download Now",
+            label="Download Now",
             data=bytes_io,
             file_name="input-files.zip",
             mime="application/zip",
@@ -952,7 +952,7 @@ class StreamlitUI:
     def file_upload_section(self, custom_upload_function) -> None:
         custom_upload_function()
         c1, _ = st.columns(2)
-        if c1.button("⬇️ Download files", use_container_width=True):
+        if c1.button("Download files", use_container_width=True):
             self.zip_and_download_files(Path(self.workflow_dir, "input-files"))
 
     def parameter_section(self, custom_parameter_function) -> None:
@@ -965,7 +965,7 @@ class StreamlitUI:
         cols = st.columns(3)
         with cols[0]:
             if st.button(
-                "⚠️ Load default parameters",
+                "Load default parameters",
                 help="Reset paramter section to default.",
                 use_container_width=True,
             ):
@@ -975,7 +975,7 @@ class StreamlitUI:
             if self.parameter_manager.params_file.exists():
                 with open(self.parameter_manager.params_file, "rb") as f:
                     st.download_button(
-                        "⬇️ Export parameters",
+                        "Export parameters",
                         data=f,
                         file_name="parameters.json",
                         mime="text/json",
@@ -984,7 +984,7 @@ class StreamlitUI:
                     )
             text = self.export_parameters_markdown()
             st.download_button(
-                "📑 Method summary",
+                "Method summary",
                 data=text,
                 file_name="method-summary.md",
                 mime="text/md",
@@ -994,7 +994,7 @@ class StreamlitUI:
 
         with cols[2]:
             up = st.file_uploader(
-                "⬆️ Import parameters", help="Reset parameter section to default."
+                "Import parameters", help="Reset parameter section to default."
             )
             if up is not None:
                 with open(self.parameter_manager.params_file, "w") as f:
