@@ -9,5 +9,8 @@
     "controllo": false,
 
     "view_preset_FLASHDeconv": null,
-    "view_preset_FLASHTnT": null
+    "view_preset_FLASHTnT": null,
+
+    "compare_count_FLASHDeconv": 1,
+    "compare_count_FLASHTnT": 1
 }

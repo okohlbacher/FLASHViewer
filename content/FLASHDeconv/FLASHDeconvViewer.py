@@ -141,11 +141,14 @@ def setSequenceViewInDefaultView():
 
 def select_experiment():
     st.session_state.selected_experiment0 = st.session_state.selected_experiment_dropdown
-    if "saved_layout_setting" in st.session_state and len(st.session_state["saved_layout_setting"]) > 1:
-        for exp_index in range(1, len(st.session_state["saved_layout_setting"])):
-            if st.session_state[f'selected_experiment_dropdown_{exp_index}'] is None:
-                continue
-            st.session_state[f"selected_experiment{exp_index}"] = st.session_state[f'selected_experiment_dropdown_{exp_index}']
+    # Slot count is whichever is larger: a custom layout's slots, or the
+    # comparison count set on the presets page.
+    custom = st.session_state.get("saved_layout_setting")
+    slots = max(len(custom) if custom else 1, preset_page.compare_count("FLASHDeconv"))
+    for exp_index in range(1, slots):
+        if st.session_state.get(f'selected_experiment_dropdown_{exp_index}') is None:
+            continue
+        st.session_state[f"selected_experiment{exp_index}"] = st.session_state[f'selected_experiment_dropdown_{exp_index}']
 
 
 
@@ -191,23 +194,28 @@ if 'selected_experiment0' in st.session_state:
 
 
 ### for multiple experiments on one view
-if "saved_layout_setting" in st.session_state and len(st.session_state["saved_layout_setting"]) > 1:
+# Slot count comes from the presets page. A hand-built layout may still carry
+# its own per-slot layouts, in which case those win, which is what the old
+# "#Experiments to view at once" produced.
+custom = st.session_state.get("saved_layout_setting")
+slot_count = len(custom) if custom and len(custom) > 1 else preset_page.compare_count("FLASHDeconv")
 
-    for exp_index, exp_layout in enumerate(st.session_state["saved_layout_setting"]):
-        if exp_index == 0: continue  # skip the first experiment
+for exp_index in range(1, slot_count):
+    st.divider()  # horizontal line
 
-        st.divider()  # horizontal line
-
-        st.selectbox(
-            "choose experiment", results, 
-            key=f'selected_experiment_dropdown_{exp_index}',
-            index = name_to_index[st.session_state[f'selected_experiment{exp_index}']] if f'selected_experiment{exp_index}' in st.session_state else None,
-            on_change=select_experiment
-        )
-        # if #experiment input files are less than #layouts, all the pre-selection will be the first experiment
-        if f"selected_experiment{exp_index}" in st.session_state:
-            layout_info = st.session_state["saved_layout_setting"][exp_index]
-            with st.spinner('Loading component...'):
-                sendDataToJS(st.session_state["selected_experiment%d" % exp_index], layout_info, 'flash_viewer_grid_%d' % exp_index)
+    st.selectbox(
+        "choose experiment", results,
+        key=f'selected_experiment_dropdown_{exp_index}',
+        index = name_to_index[st.session_state[f'selected_experiment{exp_index}']] if f'selected_experiment{exp_index}' in st.session_state else None,
+        on_change=select_experiment
+    )
+    # if #experiment input files are less than #layouts, all the pre-selection will be the first experiment
+    if f"selected_experiment{exp_index}" in st.session_state:
+        if custom and exp_index < len(custom):
+            layout_info = custom[exp_index]
+        else:
+            layout_info = preset_page.selected_rows("FLASHDeconv") or DEFAULT_LAYOUT
+        with st.spinner('Loading component...'):
+            sendDataToJS(st.session_state["selected_experiment%d" % exp_index], layout_info, 'flash_viewer_grid_%d' % exp_index)
 
 save_params(params)

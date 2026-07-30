@@ -200,7 +200,15 @@ def page_setup(page: str = "") -> dict[str, Any]:
         # Define the directory where all workspaces will be stored
         workspaces_dir = Path("..", "workspaces-" + st.session_state.settings["repository-name"])
         if "workspace" in st.query_params:
-            st.session_state.workspace = Path(workspaces_dir, st.query_params.workspace)
+            # ?workspace= is user-controlled and lands straight in a filesystem
+            # path. An empty value silently resolved to the workspaces directory
+            # itself, which then failed in render_sidebar with
+            # "'workspaces-FLASHViewer' is not in list"; "..' or an absolute path
+            # would escape the directory entirely.
+            requested = str(st.query_params.workspace or "").strip()
+            if (not requested) or requested != Path(requested).name or requested in (".", ".."):
+                requested = "default"
+            st.session_state.workspace = Path(workspaces_dir, requested)
         elif st.session_state.location == "online":
             workspace_id = str(uuid.uuid1())
             st.session_state.workspace = Path(workspaces_dir, workspace_id)

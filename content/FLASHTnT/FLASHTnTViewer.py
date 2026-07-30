@@ -233,11 +233,14 @@ def setSequenceViewInDefaultView():
 
 def select_experiment():
     st.session_state.selected_experiment0_tagger = st.session_state.selected_experiment_dropdown_tagger
-    if "saved_layout_setting_tagger" in st.session_state and len(st.session_state["saved_layout_setting_tagger"]) > 1:
-        for exp_index in range(1, len(st.session_state["saved_layout_setting_tagger"])):
-            if st.session_state[f'selected_experiment_dropdown_{exp_index}_tagger'] is None:
-                continue
-            st.session_state[f"selected_experiment{exp_index}_tagger"] = st.session_state[f'selected_experiment_dropdown_{exp_index}_tagger']
+    # Slot count is whichever is larger: a custom layout's slots, or the
+    # comparison count set on the presets page.
+    custom = st.session_state.get("saved_layout_setting_tagger")
+    slots = max(len(custom) if custom else 1, preset_page.compare_count("FLASHTnT"))
+    for exp_index in range(1, slots):
+        if st.session_state.get(f'selected_experiment_dropdown_{exp_index}_tagger') is None:
+            continue
+        st.session_state[f"selected_experiment{exp_index}_tagger"] = st.session_state[f'selected_experiment_dropdown_{exp_index}_tagger']
 
 
 
@@ -281,24 +284,28 @@ if 'selected_experiment0_tagger' in st.session_state:
 
 
 ### for multiple experiments on one view
-if "saved_layout_setting_tagger" in st.session_state and len(st.session_state["saved_layout_setting_tagger"]) > 1:
+# Slot count comes from the presets page; a hand-built layout with its own
+# per-slot layouts still wins, as the old layout editor produced.
+custom = st.session_state.get("saved_layout_setting_tagger")
+slot_count = len(custom) if custom and len(custom) > 1 else preset_page.compare_count("FLASHTnT")
 
-    for exp_index, exp_layout in enumerate(st.session_state["saved_layout_setting_tagger"]):
-        if exp_index == 0: continue  # skip the first experiment
+for exp_index in range(1, slot_count):
+    st.divider() # horizontal line
 
-        st.divider() # horizontal line
+    st.selectbox(
+        "choose experiment", results,
+        key=f'selected_experiment_dropdown_{exp_index}_tagger',
+        index = name_to_index[st.session_state[f'selected_experiment{exp_index}_tagger']] if f'selected_experiment{exp_index}_tagger' in st.session_state else None,
+        on_change=select_experiment
+    )
 
-        st.selectbox(
-            "choose experiment", results, 
-            key=f'selected_experiment_dropdown_{exp_index}_tagger',
-            index = name_to_index[st.session_state[f'selected_experiment{exp_index}_tagger']] if f'selected_experiment{exp_index}_tagger' in st.session_state else None,
-            on_change=select_experiment
-        )
-
-        # if #experiment input files are less than #layouts, all the pre-selection will be the first experiment
-        if f"selected_experiment{exp_index}_tagger" in st.session_state:
-            layout_info = st.session_state["saved_layout_setting_tagger"][exp_index]
-            with st.spinner('Loading component...'):
-                sendDataToJS(st.session_state["selected_experiment%d_tagger" % exp_index], layout_info, 'flash_viewer_grid_%d' % exp_index)
+    # if #experiment input files are less than #layouts, all the pre-selection will be the first experiment
+    if f"selected_experiment{exp_index}_tagger" in st.session_state:
+        if custom and exp_index < len(custom):
+            layout_info = custom[exp_index]
+        else:
+            layout_info = preset_page.selected_rows("FLASHTnT") or DEFAULT_LAYOUT
+        with st.spinner('Loading component...'):
+            sendDataToJS(st.session_state["selected_experiment%d_tagger" % exp_index], layout_info, 'flash_viewer_grid_%d' % exp_index)
 
 save_params(params)

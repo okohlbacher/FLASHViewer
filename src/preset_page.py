@@ -34,6 +34,17 @@ def selected_rows(tool):
     return rows
 
 
+def compare_count(tool):
+    """How many datasets to show side by side. 1 means no comparison.
+
+    This replaces the old '#Experiments to view at once' selectbox. It is a
+    count rather than a list of ids because each slot keeps its own dataset
+    selector in the viewer, exactly as before — the layout is shared, which is
+    the whole point of a preset.
+    """
+    return int(st.session_state.get(f"compare_count_{tool}", 1) or 1)
+
+
 def _cache_dir(tool):
     return {"FLASHDeconv": "flashdeconv", "FLASHTnT": "flashtnt"}[tool]
 
@@ -93,6 +104,18 @@ def render(tool, required_tags):
                 # A preset and a hand-built layout cannot both be in charge.
                 st.session_state.pop(_saved_key(tool), None)
                 st.rerun()
+
+    st.divider()
+
+    # Replaces the old "#Experiments to view at once" selectbox, which lived in
+    # the layout editor this page replaced. 1 is the default and the common case.
+    st.selectbox(
+        "Datasets to compare side by side",
+        [1, 2, 3, 4, 5],
+        key=f"compare_count_{tool}",
+        help="Each slot gets its own dataset selector in the Viewer and shows "
+             "the same preset, so the grids line up.",
+    )
 
     st.divider()
     _render_interchange(tool)
