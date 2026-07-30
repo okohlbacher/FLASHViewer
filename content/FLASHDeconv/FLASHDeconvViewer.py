@@ -10,6 +10,7 @@ from src.components import PlotlyHeatmap, PlotlyLineplot, Plotly3Dplot, Tabulato
                            FlashViewerComponent, flash_viewer_grid_component, FDRPlotly
 from src.sequence import getFragmentDataFromSeq, getInternalFragmentDataFromSeq
 from src.workflow.FileManager import FileManager
+from src import preset_page
 
 
 DEFAULT_LAYOUT = [['ms1_deconv_heat_map'], ['scan_table', 'mass_table'],
@@ -180,8 +181,10 @@ st.selectbox(
 )
 
 if 'selected_experiment0' in st.session_state:
-    layout_info = DEFAULT_LAYOUT
-    if "saved_layout_setting" in st.session_state:  # when layout manager was used
+    # A saved custom layout wins; otherwise the chosen view preset, whose
+    # prerequisites are already expanded. DEFAULT_LAYOUT remains the last resort.
+    layout_info = preset_page.selected_rows("FLASHDeconv") or DEFAULT_LAYOUT
+    if "saved_layout_setting" in st.session_state:  # hand-built layout
         layout_info = st.session_state["saved_layout_setting"][0]
     with st.spinner('Loading component...'):
         sendDataToJS(st.session_state.selected_experiment0, layout_info)

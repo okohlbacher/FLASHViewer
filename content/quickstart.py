@@ -40,12 +40,13 @@ Extract the zip file and run the installer (.msi) file to install the app. The a
     )
 
 c1, c2 = st.columns(2)
-c1.markdown(
-    """
-## ⭐ New
-       
-- FLASHViewer is now FLASHApp
-- Want to save your progress or share it with your team? Simply bookmark / share the URL!
-"""
-)
+# The share/bookmark line is only true on a hosted deployment. The desktop app
+# starts Streamlit on a random port bound to 127.0.0.1, so the URL means nothing
+# to anyone else and differs on the next launch.
+whats_new = ["- FLASHViewer is now FLASHApp"]
+if st.session_state.settings.get("online_deployment", False):
+    whats_new.append(
+        "- Want to save your progress or share it with your team? Simply bookmark / share the URL!"
+    )
+c1.markdown("## ⭐ New\n\n" + "\n".join(whats_new) + "\n")
 c2.image("assets/pyopenms_transparent_background.png", width=300)

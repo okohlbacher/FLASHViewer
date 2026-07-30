@@ -15,6 +15,7 @@ from src.components import Tabulator, SequenceView, InternalFragmentMap, \
 from src.sequence import getFragmentDataFromSeq, getInternalFragmentDataFromSeq
 from src.workflow.FileManager import FileManager
 from src.sequence import remove_ambigious
+from src import preset_page
 
 
 DEFAULT_LAYOUT = [
@@ -270,8 +271,10 @@ st.selectbox(
 )
 
 if 'selected_experiment0_tagger' in st.session_state:
-    layout_info = DEFAULT_LAYOUT
-    if "saved_layout_setting_tagger" in st.session_state:  # when layout manager was used
+    # A saved custom layout wins; otherwise the chosen view preset, whose
+    # prerequisites are already expanded. DEFAULT_LAYOUT remains the last resort.
+    layout_info = preset_page.selected_rows("FLASHTnT") or DEFAULT_LAYOUT
+    if "saved_layout_setting_tagger" in st.session_state:  # hand-built layout
         layout_info = st.session_state["saved_layout_setting_tagger"][0]
     with st.spinner('Loading component...'):
         sendDataToJS(st.session_state.selected_experiment0_tagger, layout_info)
