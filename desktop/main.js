@@ -10,6 +10,46 @@ const WIN = process.platform === 'win32'
 const PY = WIN ? path.join(RES, 'runtime', 'python.exe') : path.join(RES, 'runtime', 'bin', 'python3')
 const ENTRY = process.env.STREAMLIT_ENTRY || 'app.py'
 
+// Native file dialogs have to come from Electron. The app used tkinter, but on
+// macOS Tk aborts the whole process when constructed off the main thread
+// ("NSException", libc++abi terminate), and Streamlit runs page code in a
+// ScriptRunner thread — so every dialog killed the Python process instead of
+// opening. Electron owns the main thread, so it opens the dialog and the page
+// asks over localhost.
+function startDialogServer (token) {
+  return new Promise(resolve => {
+    const server = http.createServer(async (req, res) => {
+      const url = new URL(req.url, 'http://127.0.0.1')
+      const reply = (code, body) => {
+        res.writeHead(code, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(body))
+      }
+      // Any local process could otherwise pop dialogs at the user.
+      if (url.searchParams.get('token') !== token) return reply(403, { error: 'forbidden' })
+      if (url.pathname !== '/pick') return reply(404, { error: 'not found' })
+
+      const exts = (url.searchParams.get('types') || '').split(',').filter(Boolean)
+      const directory = url.searchParams.get('directory') === '1'
+      const win = BrowserWindow.getAllWindows()[0]
+      const opts = {
+        title: url.searchParams.get('title') || 'Select files',
+        properties: directory
+          ? ['openDirectory']
+          : ['openFile', 'multiSelections']
+      }
+      if (!directory && exts.length) opts.filters = [{ name: exts.join('/'), extensions: exts }]
+
+      try {
+        const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+        reply(200, { paths: r.canceled ? [] : r.filePaths })
+      } catch (e) {
+        reply(500, { error: String(e) })
+      }
+    })
+    server.listen(0, '127.0.0.1', () => resolve(server.address().port))
+  })
+}
+
 let py = null
 
 // The app writes workspaces to ../workspaces-* relative to its cwd, so it cannot run
@@ -42,6 +82,8 @@ async function start () {
   const cwd = stageApp()
   const port = await freePort()
   const url = `http://127.0.0.1:${port}`
+  const dialogToken = require('crypto').randomBytes(16).toString('hex')
+  const dialogPort = await startDialogServer(dialogToken)
 
   py = spawn(PY, ['-m', 'streamlit', 'run', ENTRY,
     '--server.port', String(port),
@@ -63,6 +105,8 @@ async function start () {
       ...process.env,
       OPENMS_DATA_PATH: undefined,
       FLASHAPP_DESKTOP: '1',
+      FLASHAPP_DIALOG_PORT: String(dialogPort),
+      FLASHAPP_DIALOG_TOKEN: dialogToken,
       PATH: path.join(RES, 'topp') + path.delimiter + process.env.PATH
     }
   })

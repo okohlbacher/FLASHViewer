@@ -20,6 +20,7 @@ from src.common.common import (
     TK_AVAILABLE,
     tk_directory_dialog,
     tk_file_dialog,
+    electron_dialog,
 )
 
 # The Electron shell sets this. In a desktop app the data already lives on the
@@ -148,7 +149,7 @@ class StreamlitUI:
                     use_container_width=True,
                     key="local_browse_single",
                     help="Browse for your local MS data files.",
-                    disabled=not TK_AVAILABLE,
+                    disabled=not (DESKTOP or TK_AVAILABLE),
                 )
 
                 # Tk file dialog requires file types to be a list of tuples
@@ -160,11 +161,19 @@ class StreamlitUI:
                     raise ValueError("'file_types' must be either of type str or list")
 
                 if dialog_button:
-                    local_files = tk_file_dialog(
-                        "Select your local MS data files",
-                        tk_file_types,
-                        st.session_state["previous_dir"],
-                    )
+                    # Tk aborts the process when used off the main thread on
+                    # macOS, and Streamlit page code never runs on it. In the
+                    # desktop app Electron owns the dialog instead.
+                    if DESKTOP:
+                        local_files = [str(p) for p in electron_dialog(
+                            file_types=file_types,
+                            title="Select your local MS data files")]
+                    else:
+                        local_files = tk_file_dialog(
+                            "Select your local MS data files",
+                            tk_file_types,
+                            st.session_state["previous_dir"],
+                        )
                     if local_files:
                         my_bar = st.progress(0)
                         for i, f in enumerate(local_files):
@@ -190,13 +199,19 @@ class StreamlitUI:
                         "",
                         key=f"local_browse_{key}",
                         help="Browse for your local directory with MS data.",
-                        disabled=not TK_AVAILABLE,
+                        disabled=not (DESKTOP or TK_AVAILABLE),
                     )
                     if dialog_button:
-                        st.session_state["local_dir"] = tk_directory_dialog(
-                            "Select directory with your MS data",
-                            st.session_state["previous_dir"],
-                        )
+                        if DESKTOP:
+                            chosen = electron_dialog(
+                                title="Select directory with your MS data",
+                                directory=True)
+                            st.session_state["local_dir"] = str(chosen[0]) if chosen else ""
+                        else:
+                            st.session_state["local_dir"] = tk_directory_dialog(
+                                "Select directory with your MS data",
+                                st.session_state["previous_dir"],
+                            )
                         st.session_state["previous_dir"] = st.session_state["local_dir"]
 
                 with st_cols[1]:

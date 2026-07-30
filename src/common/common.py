@@ -2,6 +2,8 @@ import json
 import os
 import shutil
 import sys
+import urllib.parse
+import urllib.request
 import uuid
 import time
 from typing import Any
@@ -552,34 +554,80 @@ def tk_directory_dialog(title: str = "Select Directory", parent_dir: str = os.ge
     return file_path
 
 
+def electron_dialog(file_types=None, title="Select files", directory=False):
+    """Ask the Electron shell to open a native file dialog.
+
+    Returns a list of Paths, or [] if cancelled/unavailable.
+
+    Not tkinter: on macOS Tk aborts the entire process when constructed off the
+    main thread ("NSException", libc++abi terminate), and Streamlit runs page
+    code in a ScriptRunner thread — so every Tk dialog killed the Python
+    process rather than opening. Electron owns the main thread, so it opens the
+    dialog and we ask it over localhost.
+    """
+    port = os.environ.get("FLASHAPP_DIALOG_PORT")
+    token = os.environ.get("FLASHAPP_DIALOG_TOKEN")
+    if not port or not token:
+        return []
+
+    query = urllib.parse.urlencode({
+        "token": token,
+        "title": title,
+        "types": ",".join(file_types or []),
+        "directory": "1" if directory else "0",
+    })
+    try:
+        # The dialog is modal: the user may take a while.
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/pick?{query}", timeout=600
+        ) as response:
+            payload = json.load(response)
+    except Exception as exc:  # noqa: BLE001 - surfaced to the user below
+        st.error(f"Could not open the file dialog: {exc}")
+        return []
+    return [Path(p) for p in payload.get("paths", [])]
+
+
 def desktop_file_picker(label: str, file_types: list[str], key: str):
     """Pick files from this machine, for the desktop app.
 
     Returns a list of Paths, or [] if nothing was chosen. The desktop app has no
     upload step: files stay where they are and only their paths are recorded, so
     there is no size ceiling and no second copy on disk.
+
+    A text box is offered alongside the dialog, because typing or pasting a path
+    is often faster and it is the only route if the dialog is unavailable.
     """
-    if not TK_AVAILABLE:
-        st.error(
-            "No file dialog available in this build, so local files cannot be "
-            "browsed. This is a packaging problem — please report it."
-        )
-        return []
+    picked = []
+    c1, c2 = st.columns([1, 2])
 
-    if not st.button(f"{label}", key=key, type="primary"):
-        return []
+    if c1.button(label, key=key, type="primary"):
+        picked = electron_dialog(file_types=file_types, title=label)
+        if not picked:
+            st.info("Nothing selected.")
 
-    chosen = tk_file_dialog(
-        title=label,
-        file_types=[(ft, f"*.{ft}") for ft in file_types],
-        parent_dir=st.session_state.get("previous_dir", os.getcwd()),
+    typed = c2.text_input(
+        "or paste a file or folder path",
+        key=f"{key}_path",
+        placeholder="/path/to/data",
     )
-    if not chosen:
-        return []
-    paths = [Path(p) for p in ([chosen] if isinstance(chosen, str) else chosen)]
-    if paths:
-        st.session_state["previous_dir"] = str(paths[0].parent)
-    return paths
+    if typed:
+        source = Path(typed).expanduser()
+        if not source.exists():
+            c2.error(f"No such file or folder: {source}")
+        elif source.is_dir():
+            matched = sorted(
+                p for ext in file_types for p in source.glob(f"*.{ext}")
+            )
+            if not matched:
+                c2.error(f"No .{'/.'.join(file_types)} files in {source}")
+            picked = matched
+        else:
+            picked = [source]
+
+    if picked:
+        st.session_state["previous_dir"] = str(picked[0].parent)
+    return picked
 
 
 def tk_file_dialog(
