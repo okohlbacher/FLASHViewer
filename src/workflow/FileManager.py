@@ -348,8 +348,13 @@ class FileManager:
                 paths. A linked file is never removed, whatever `remove` says —
                 it belongs to the user, not to the workspace.
         """
+        # Ownership, not type. Inferring link from "is it a Path on desktop"
+        # linked the workflow's own outputs, which live in a per-run temp
+        # directory that Workflow.py deletes moments later — leaving index rows
+        # pointing at deleted files. Only a call site that knows the file
+        # belongs to the user may ask for linking.
         if link is None:
-            link = DESKTOP and not isinstance(file, BytesIO)
+            link = False
 
         if link:
             # remove_results()/clear_cache() only delete inside cache_path, so a

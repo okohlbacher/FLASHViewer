@@ -88,6 +88,29 @@ def save_params(params: dict[str, Any]) -> None:
     return params
 
 
+def valid_workspace_name(name) -> str:
+    """A workspace name that is safe to join onto the workspaces directory.
+
+    Returns "" if the value cannot be used. Workspace names reach us from a URL
+    query parameter and from a sidebar text box, and both are joined into a path
+    that gets created — and, for the text box, rmtree'd. An absolute path
+    replaces the prefix entirely and ".." walks out of it, so anything that is
+    not a single plain path component is rejected rather than sanitised.
+    """
+    name = str(name or "").strip()
+    if not name or name in (".", ".."):
+        return ""
+    # Backslash is a legal filename character on POSIX but a separator on
+    # Windows, and a workspace created on one may be opened on the other.
+    if "/" in name or "\\" in name:
+        return ""
+    if name != Path(name).name:  # absolute, or otherwise not a plain component
+        return ""
+    if name.startswith("."):  # no hidden dirs, no surprises
+        return ""
+    return name
+
+
 def page_setup(page: str = "") -> dict[str, Any]:
     """
     Set up the Streamlit page configuration and determine the workspace for the current session.
@@ -205,10 +228,9 @@ def page_setup(page: str = "") -> dict[str, Any]:
             # itself, which then failed in render_sidebar with
             # "'workspaces-FLASHViewer' is not in list"; "..' or an absolute path
             # would escape the directory entirely.
-            requested = str(st.query_params.workspace or "").strip()
-            if (not requested) or requested != Path(requested).name or requested in (".", ".."):
-                requested = "default"
-            st.session_state.workspace = Path(workspaces_dir, requested)
+            st.session_state.workspace = Path(
+                workspaces_dir, valid_workspace_name(st.query_params.workspace) or "default"
+            )
         elif st.session_state.location == "online":
             workspace_id = str(uuid.uuid1())
             st.session_state.workspace = Path(workspaces_dir, workspace_id)
@@ -285,18 +307,27 @@ def render_sidebar(page: str = "") -> None:
                 )
                 # Create or Remove workspaces
                 create_remove = st.text_input("create/remove workspace", "")
-                path = Path(workspaces_dir, create_remove)
+                # This value is joined into a path that Delete then rmtree's, so
+                # it must be a single name. An absolute path replaces the
+                # workspaces prefix outright and ".." walks out of it — either
+                # would delete a directory the user never named.
+                safe_name = valid_workspace_name(create_remove)
+                path = Path(workspaces_dir, safe_name) if safe_name else None
+                if create_remove and not safe_name:
+                    st.error("Workspace names must be a single name — no slashes, no '..'.")
                 # Create new workspace
-                if st.button("**Create Workspace**"):
+                if st.button("**Create Workspace**", disabled=not safe_name):
                     path.mkdir(parents=True, exist_ok=True)
                     st.session_state.workspace = path
-                    st.query_params.workspace = create_remove
+                    st.query_params.workspace = safe_name
                     # Temporary as the query update takes a short amount of time
                     time.sleep(1)
                     st.rerun()
                 # Remove existing workspace and fall back to default
-                if st.button("Delete Workspace"):
-                    if path.exists():
+                if st.button("Delete Workspace", disabled=not safe_name):
+                    if safe_name == "default":
+                        st.error("The default workspace cannot be deleted.")
+                    elif path.exists():
                         shutil.rmtree(path)
                         st.session_state.workspace = Path(workspaces_dir, "default")
                         st.query_params.workspace = "default"
