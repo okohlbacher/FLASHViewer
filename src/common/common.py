@@ -513,6 +513,36 @@ def tk_directory_dialog(title: str = "Select Directory", parent_dir: str = os.ge
     return file_path
 
 
+def desktop_file_picker(label: str, file_types: list[str], key: str):
+    """Pick files from this machine, for the desktop app.
+
+    Returns a list of Paths, or [] if nothing was chosen. The desktop app has no
+    upload step: files stay where they are and only their paths are recorded, so
+    there is no size ceiling and no second copy on disk.
+    """
+    if not TK_AVAILABLE:
+        st.error(
+            "No file dialog available in this build, so local files cannot be "
+            "browsed. This is a packaging problem — please report it."
+        )
+        return []
+
+    if not st.button(f"📁 {label}", key=key, type="primary"):
+        return []
+
+    chosen = tk_file_dialog(
+        title=label,
+        file_types=[(ft, f"*.{ft}") for ft in file_types],
+        parent_dir=st.session_state.get("previous_dir", os.getcwd()),
+    )
+    if not chosen:
+        return []
+    paths = [Path(p) for p in ([chosen] if isinstance(chosen, str) else chosen)]
+    if paths:
+        st.session_state["previous_dir"] = str(paths[0].parent)
+    return paths
+
+
 def tk_file_dialog(
     title: str = "Select File",
     file_types: list[tuple] = [],

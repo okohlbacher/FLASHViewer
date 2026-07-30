@@ -48,12 +48,23 @@ async function start () {
     '--server.address', '127.0.0.1',
     '--server.headless', 'true',
     '--server.fileWatcherType', 'none',
-    '--browser.gatherUsageStats', 'false'
+    '--browser.gatherUsageStats', 'false',
+    // Desktop references files in place rather than uploading them, but the
+    // websocket still carries whole result frames to the viewer, and MS data is
+    // routinely gigabytes. Streamlit's 200 MB defaults are a browser-era limit
+    // that makes no sense for a local app.
+    '--server.maxUploadSize', '1000000',
+    '--server.maxMessageSize', '1000000'
   ], {
     cwd,
     // TOPP tools (FLASHDeconv, ...) are looked up on PATH by the app's CommandExecutor.
     // OPENMS_DATA_PATH from a developer shell would override our bundled share dir.
-    env: { ...process.env, OPENMS_DATA_PATH: undefined, PATH: path.join(RES, 'topp') + path.delimiter + process.env.PATH }
+    env: {
+      ...process.env,
+      OPENMS_DATA_PATH: undefined,
+      FLASHAPP_DESKTOP: '1',
+      PATH: path.join(RES, 'topp') + path.delimiter + process.env.PATH
+    }
   })
 
   let log = ''

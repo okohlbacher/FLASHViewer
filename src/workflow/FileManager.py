@@ -1,4 +1,5 @@
 import gzip
+import os
 import shutil
 import string
 import random
@@ -10,6 +11,12 @@ import pickle as pkl
 from io import BytesIO
 from pathlib import Path
 from typing import Union, List
+
+# Set by the Electron shell. On the desktop the data is already on this machine,
+# so files are referenced where they lie instead of being copied into the cache:
+# MS runs are routinely gigabytes and copying doubles disk use for no benefit.
+DESKTOP = os.environ.get("FLASHAPP_DESKTOP") == "1"
+
 
 class FileManager:
     """
@@ -322,8 +329,8 @@ class FileManager:
         # Store reference in index
         self._add_entry('stored_data', dataset_id, name_tag, data_path)
         
-    def store_file(self, dataset_id: str, name_tag: str, file: Path | BytesIO, 
-                   remove: bool = True, file_name = None) -> None:
+    def store_file(self, dataset_id: str, name_tag: str, file: Path | BytesIO,
+                   remove: bool = True, file_name = None, link: bool = None) -> None:
         """
         Stores a given file.
 
@@ -334,9 +341,21 @@ class FileManager:
             file (Path of File-Like): The file that should be stored.
             remove (bool): Wether or not the file should be removed
                 after copying it.
-            filetype (str): The file extension of the file. Only 
+            filetype (str): The file extension of the file. Only
                 neccessary if a file-like object is used as input.
+            link (bool): Reference the file where it is instead of copying it
+                into the cache. Defaults to True on the desktop app for real
+                paths. A linked file is never removed, whatever `remove` says —
+                it belongs to the user, not to the workspace.
         """
+        if link is None:
+            link = DESKTOP and not isinstance(file, BytesIO)
+
+        if link:
+            # remove_results()/clear_cache() only delete inside cache_path, so a
+            # linked original is never touched by deleting the dataset.
+            self._add_entry('stored_files', dataset_id, name_tag, Path(file).resolve())
+            return
 
         # Define storage path
         if file_name is None:
@@ -476,8 +495,9 @@ class FileManager:
             WHERE id = '{dataset_id}';
         """)
 
-        # Remove stored files
-        shutil.rmtree(Path(self.cache_path, 'files', dataset_id))
+        # Remove stored files. A dataset whose files are all linked has no
+        # directory here at all, so this must tolerate its absence.
+        shutil.rmtree(Path(self.cache_path, 'files', dataset_id), ignore_errors=True)
 
     def clear_cache(self):
         shutil.rmtree(Path(self.cache_path, 'files'))

@@ -5,7 +5,8 @@ from pathlib import Path
 
 from src.Workflow import DeconvWorkflow
 from src.parse.deconv import parseDeconv
-from src.common.common import page_setup
+from src.common.common import page_setup, desktop_file_picker
+from src.workflow.StreamlitUI import DESKTOP
 
 
 params = page_setup()
@@ -107,10 +108,10 @@ with t[3]:
             st.success("Example files loaded!")
 
     with tabs[0]:
-        st.subheader("**Upload FLASHDeconv output files (\*_annotated.mzML & \*_deconv.mzML) or spec1/2 TSV files (ECDF Plot only)**")
+        st.subheader("**Add FLASHDeconv output files (\*_annotated.mzML & \*_deconv.mzML) or spec1/2 TSV files (ECDF Plot only)**")
         st.info(
             """
-            **💡 How to upload files**
+            **💡 How to add files**
 
             1. Browse files on your computer or drag and drops files
             2. Click the **Add the uploaded files** button to use them in the workflows
@@ -120,7 +121,17 @@ with t[3]:
             **💡 Make sure that the same number of deconvolved and annotated mzML files are uploaded!**
             """
         )
-        with st.form('input_files', clear_on_submit=True):
+        if DESKTOP:
+            # No upload step: reference the files where they already are.
+            picked = desktop_file_picker(
+                "Add FLASHDeconv output files", ["mzML", "tsv"], key="fd_pick"
+            )
+            if picked:
+                process_uploaded_files(picked)
+                st.success(f"Added {len(picked)} file(s).")
+                st.rerun()
+        else:
+          with st.form('input_files', clear_on_submit=True):
             uploaded_files = st.file_uploader(
                 "FLASHDeconv output mzML files or TSV files", accept_multiple_files=True, type=["mzML", "tsv"]
             )

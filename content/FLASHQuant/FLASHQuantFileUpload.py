@@ -5,7 +5,8 @@ from pathlib import Path
 
 from src.Workflow import QuantWorkflow
 from src.parse.quant import parseQuant
-from src.common.common import page_setup
+from src.common.common import page_setup, desktop_file_picker
+from src.workflow.StreamlitUI import DESKTOP
 
 
 # page initialization
@@ -108,7 +109,17 @@ with tabs[0]:
     **💡 To visualize conflict resolution, \*fq_shared.tsv files should be uploaded**
     """
     )
-    with st.form('files_uploader_form', clear_on_submit=True):
+    if DESKTOP:
+        # No upload step: reference the files where they already are.
+        picked = desktop_file_picker(
+            "Add FLASHQuant output files", ["tsv"], key="fq_pick"
+        )
+        if picked:
+            process_uploaded_files(picked)
+            st.success(f"Added {len(picked)} file(s).")
+            st.rerun()
+    else:
+      with st.form('files_uploader_form', clear_on_submit=True):
         uploaded_files = st.file_uploader(
             "FLASHQuant output files", accept_multiple_files=True
         )

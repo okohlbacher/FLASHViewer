@@ -22,6 +22,12 @@ from src.common.common import (
     tk_file_dialog,
 )
 
+# The Electron shell sets this. In a desktop app the data already lives on the
+# user's disk, so copying it through a browser upload is pure overhead — it
+# doubles disk use and imposes a size ceiling on files that are routinely
+# gigabytes. Desktop therefore references paths instead of copying.
+DESKTOP = os.environ.get("FLASHAPP_DESKTOP") == "1"
+
 
 class StreamlitUI:
     """
@@ -75,19 +81,25 @@ class StreamlitUI:
             name = key.replace("-", " ")
 
         c1, c2 = st.columns(2)
-        c1.markdown("**Upload file(s)**")
 
-        if st.session_state.location == "local":
-            c2_text, c2_checkbox = c2.columns([1.5, 1], gap="large")
-            c2_text.markdown("**OR add files from local folder**")
-            use_copy = c2_checkbox.checkbox(
-                "Make a copy of files",
-                key=f"{key}-copy_files",
-                value=True,
-                help="Create a copy of files in workspace.",
-            )
+        if DESKTOP:
+            # No uploader at all: the files are already on this machine.
+            c1.markdown("**Add file(s) from this computer**")
+            c2.markdown("**OR add a whole folder**")
+            use_copy = False
         else:
-            use_copy = True
+            c1.markdown("**Upload file(s)**")
+            if st.session_state.location == "local":
+                c2_text, c2_checkbox = c2.columns([1.5, 1], gap="large")
+                c2_text.markdown("**OR add files from local folder**")
+                use_copy = c2_checkbox.checkbox(
+                    "Make a copy of files",
+                    key=f"{key}-copy_files",
+                    value=True,
+                    help="Create a copy of files in workspace.",
+                )
+            else:
+                use_copy = True
 
         # Convert file_types to a list if it's a string
         if isinstance(file_types, str):

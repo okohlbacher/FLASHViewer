@@ -5,7 +5,8 @@ from pathlib import Path
 
 from src.parse.tnt import parseTnT
 from src.Workflow import TagWorkflow
-from src.common.common import page_setup
+from src.common.common import page_setup, desktop_file_picker
+from src.workflow.StreamlitUI import DESKTOP
 
 
 params = page_setup()
@@ -116,7 +117,18 @@ with t[3]:
         **💡 Make sure that the same number of deconvolved and annotated mzML and FLASHTagger output files files are uploaded!**
         """
         )
-        with st.form('input_mzML', clear_on_submit=True):
+        if DESKTOP:
+            # No upload step: reference the files where they already are.
+            picked = desktop_file_picker(
+                "Add FLASHDeconv & FLASHTagger output files", ["mzML", "tsv"],
+                key="tnt_pick",
+            )
+            if picked:
+                process_uploaded_files(picked)
+                st.success(f"Added {len(picked)} file(s).")
+                st.rerun()
+        else:
+          with st.form('input_mzML', clear_on_submit=True):
             uploaded_file = st.file_uploader(
                 "FLASHDeconv & FLASHTagger output files", accept_multiple_files=True, type=["mzML", "tsv"]
             )
