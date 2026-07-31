@@ -285,7 +285,23 @@ class StreamlitUI:
         # which left desktop with no way to add input data at all.
         available_fallback = [f for f in (fallback or []) if Path(f).exists()]
 
-        if fallback and not any([f for f in Path(files_dir).iterdir() if f.name != "external_files.txt"]):
+        # Files added by reference live in external_files.txt, not in files_dir.
+        # Emptiness has to account for both, or a referenced file is invisible:
+        # files_dir looks empty, the fallback branch below wins, and it only ever
+        # listed files_dir — so on desktop, where every added file is referenced,
+        # picking a file appeared to do nothing at all.
+        external_index = Path(files_dir, "external_files.txt")
+        external_list = []
+        if external_index.exists():
+            with open(external_index) as fh:
+                external_list = [
+                    line for line in fh.read().splitlines()
+                    if line and os.path.exists(line)
+                ]
+        copied_present = [f for f in Path(files_dir).iterdir()
+                          if f.name != "external_files.txt"]
+
+        if fallback and not copied_present and not external_list:
             c1, _ = st.columns(2)
             for f in available_fallback:
                 if not Path(files_dir, Path(f).name).exists():
@@ -299,29 +315,8 @@ class StreamlitUI:
                     "add your own files above to get started."
                 )
         else:
-            if files_dir.exists():
-                current_files = [
-                    f.name
-                    for f in files_dir.iterdir()
-                    if "external_files.txt" not in f.name
-                ]
-
-                # Check if local files are available
-                external_files = Path(
-                    self.workflow_dir, "input-files", key, "external_files.txt"
-                )
-
-                if external_files.exists():
-                    with open(external_files, "r") as f:
-                        external_files_list = f.read().splitlines()
-                    # Only make files available that still exist
-                    current_files += [
-                        f"(local) {Path(f).name}"
-                        for f in external_files_list
-                        if os.path.exists(f)
-                    ]
-            else:
-                current_files = []
+            current_files = [f.name for f in copied_present]
+            current_files += [f"(local) {Path(f).name}" for f in external_list]
 
         if files_dir.exists() and not any(files_dir.iterdir()):
             shutil.rmtree(files_dir)

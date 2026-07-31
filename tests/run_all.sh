@@ -33,6 +33,7 @@ run tests/test_workspace_name.py
 run tests/test_filemanager_sql.py
 run tests/test_linked_files.py 1
 run tests/test_dialogs_and_workspace.py
+run tests/test_input_listing.py
 run tests/test_workflow_pipeline.py
 run tests/test_end_to_end.py
 
