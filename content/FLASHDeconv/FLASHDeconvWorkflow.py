@@ -72,8 +72,14 @@ with t[3]:
             ) & input_files
         )
 
-        # Process unparsed datasets
-        for unparsed_dataset in (unparsed_files | unparsed_tsv_files):
+        # Process unparsed datasets. Parsing is a phase of the work, not a
+        # silent gap after it: on real data this runs for minutes.
+        pending = sorted(unparsed_files | unparsed_tsv_files)
+        if pending:
+            _status = st.status(f"Parsing {len(pending)} dataset(s)…", expanded=True)
+            _progress = _status.progress(0.0)
+        for _i, unparsed_dataset in enumerate(pending):
+            _status.write(f"Parsing {unparsed_dataset} ({_i + 1}/{len(pending)})")
             results = wf.file_manager.get_results(
                 unparsed_dataset, 
                 ['out_deconv_mzML', 'anno_annotated_mzML', 
@@ -85,6 +91,11 @@ with t[3]:
 
             for k, v in parsed_data.items():
                 wf.file_manager.store_data(unparsed_dataset, k, v)
+            _progress.progress((_i + 1) / len(pending))
+
+        if pending:
+            _status.update(label=f"Parsed {len(pending)} dataset(s)", state="complete",
+                           expanded=False)
 
     # make directory to store deconv and anno mzML files & initialize data storage
     tabs = st.tabs(["File Upload", "Example Data"])
