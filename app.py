@@ -30,5 +30,9 @@ if __name__ == '__main__':
         ],
     }
 
-    pg = st.navigation(pages, expanded=True)
+    # position='top' gives the header-style navigation the redesign asks for
+    # without giving up st.navigation: page URLs, browser history and
+    # st.switch_page all keep working. Removing it would mean hand-rolling a
+    # router over twelve page scripts and losing deep links.
+    pg = st.navigation(pages, position='top')
     pg.run()

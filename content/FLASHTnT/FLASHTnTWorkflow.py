@@ -15,7 +15,7 @@ wf = TagWorkflow()
 
 st.title('FLASHTnT - Tag and Extend')
 
-t = st.tabs(["**File Upload**", "**Configure**", "**Run**", "**Manual Result Upload**"])
+t = st.tabs(["**Data**", "**Method**", "**Run**", "**Add results**"])
 with t[0]:
     wf.show_file_upload_section()
 

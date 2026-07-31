@@ -278,9 +278,25 @@ def render_sidebar(page: str = "") -> None:
         None
     """
     params = load_params()
-    with st.sidebar:
-        # The main page has workspace switcher
-        with st.expander("**Workspaces**"):
+
+    # Navigation moved to the top bar, which leaves the sidebar holding nothing
+    # but this expander. Workspace management is environment configuration, not
+    # navigation, so it belongs in a dialog rather than a permanent rail.
+    @st.dialog("Settings · Workspace", width="large")
+    def _workspace_dialog():
+        _render_workspace_controls()
+
+    if st.button("Settings", icon=":material/settings:", key="open_settings"):
+        _workspace_dialog()
+
+    return params
+
+
+def _render_workspace_controls():
+    """The workspace switcher and create/delete controls."""
+    params = load_params()
+    if True:
+        if True:
             # Define workspaces directory outside of repository
             workspaces_dir = Path("..", "workspaces-" + st.session_state.settings["repository-name"])
             # Online: show current workspace name in info text and option to change to other existing workspace

@@ -14,9 +14,9 @@ st.markdown('#### FLASHApp: A Platform for Your Favorite FLASH\* Tools!')
 
 st.info("""
     **How to run FLASHApp**
-    1. Go to the **Workflow** page through the sidebar and run your analysis.\
-        OR, go to the **File Upload** page through the sidebar and upload FLASHDeconv output files (\*_annotated.mzML & \*_deconv.mzML)
-    2. Click the **Viewer** page on the sidebar to view the results in detail.
+    1. Pick a tool in the top navigation, then use its **Workflow** page to run an analysis,\
+        or its **Add results** tab to bring in FLASHDeconv output files (\*_annotated.mzML & \*_deconv.mzML)
+    2. Open that tool's **Viewer** to explore the results.
     """)
 
 if Path("OpenMS-App.zip").exists():
