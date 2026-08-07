@@ -38,6 +38,7 @@ run tests/test_intent.py
 run tests/test_tool_roles.py
 run tests/test_input_listing.py
 run tests/test_partial_upload.py
+run tests/test_example_data.py
 run tests/test_workflow_pipeline.py
 run tests/test_end_to_end.py
 
