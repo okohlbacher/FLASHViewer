@@ -8,6 +8,15 @@ import random
 import string
 import os
 
+# Captcha geometry. These sat between the dead page-manipulation helpers that
+# were deleted when the Streamlit pin was lifted, and went with them — leaving
+# NameError on the only path that uses them. Nothing caught it because the
+# captcha is skipped unless online_deployment is true, so local and desktop
+# never reach this code; the hosted deployment reaches it on every session.
+length_captcha = 5
+width = 400
+height = 180
+
 
 def captcha_control():
     """

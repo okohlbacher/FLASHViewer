@@ -30,6 +30,68 @@ NASTY = [
 ]
 
 
+def traversal_checks():
+    """A dataset id or file name must never escape the cache directory.
+
+    Ids come from user filenames; on the hosted deployment the filename arrives
+    verbatim from a multipart request. Both are joined into
+    <cache>/files/<id>/<name>, and that directory is later rmtree'd.
+    Reproduced before the guard: store_file("../../..", …, file_name="victim")
+    overwrote a file three levels up.
+    """
+    import tempfile
+    from io import BytesIO
+    from src.workflow.FileManager import safe_component
+
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        cache = tmp / "ws" / "cache"
+        cache.mkdir(parents=True)
+        victim = tmp / "victim.txt"
+        victim.write_text("original")
+        fm = FileManager(tmp / "ws", cache)
+
+        for bad in ("../../..", "..", "a/b", "/etc", ".", ""):
+            try:
+                fm.store_file(bad, "out_deconv_mzML", BytesIO(b"x"),
+                              file_name="victim.txt")
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"traversal accepted as dataset id: {bad!r}")
+
+        # ...and via the file name, which is also joined onto the path.
+        try:
+            fm.store_file("ok", "out_deconv_mzML", BytesIO(b"x"),
+                          file_name="../../../victim.txt")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("traversal accepted as file name")
+
+        assert victim.read_text() == "original", "a guard let a write through"
+
+        # remove_results rmtree's the same path.
+        for bad in ("../../..", "a/b"):
+            try:
+                fm.remove_results(bad)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"traversal accepted by remove_results: {bad!r}")
+        assert (tmp / "victim.txt").exists()
+
+        # Ordinary ids still work, including the ones the app really produces.
+        for good in ("example_fd", "sample-1_20260101-120000", "a b", "Ω"):
+            assert safe_component(good) == good, good
+        fm.store_file("example_fd", "out_deconv_mzML", BytesIO(b"x"))
+        assert fm.result_exists("example_fd", "out_deconv_mzML")
+
+        print("filemanager traversal: all checks passed")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tmp = Path(tempfile.mkdtemp())
     try:
@@ -69,6 +131,7 @@ def main():
             assert _identifier(good) == good
 
         print("filemanager sql: all checks passed")
+        traversal_checks()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

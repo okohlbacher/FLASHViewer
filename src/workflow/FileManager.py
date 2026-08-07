@@ -18,6 +18,35 @@ from typing import Union, List
 DESKTOP = os.environ.get("FLASHAPP_DESKTOP") == "1"
 
 
+def safe_component(value: str, what: str = "name") -> str:
+    """A dataset id or file name that is safe to join onto a directory.
+
+    Dataset ids are derived from user-supplied filenames, and on the hosted
+    deployment the filename arrives straight from a multipart request, which
+    Streamlit does not sanitise. Both are joined into
+    <cache>/files/<dataset_id>/<file_name> and the directory is later rmtree'd,
+    so a value containing ".." or a separator writes and deletes outside the
+    cache entirely. Verified: store_file("../../..", …, file_name="victim.txt")
+    overwrote a file three levels up before this guard existed.
+
+    Rejects rather than sanitises: a silently rewritten dataset id would break
+    the filename-based grouping the upload pages depend on.
+    """
+    text = str(value)
+    if not text or text in (".", ".."):
+        raise ValueError(f"unsafe {what}: {value!r}")
+    # "/" and NUL are never legal in a component. Backslash is a separator on
+    # Windows but a legal filename character on POSIX, so rejecting it outright
+    # would refuse real files on macOS and Linux — reject it only where the OS
+    # would actually treat it as a separator.
+    separators = {"/", os.sep, os.altsep} - {None}
+    if "\0" in text or any(sep in text for sep in separators):
+        raise ValueError(f"unsafe {what}: {value!r}")
+    if Path(text).name != text or Path(text).is_absolute():
+        raise ValueError(f"unsafe {what}: {value!r}")
+    return text
+
+
 def _identifier(name: str) -> str:
     """Validate a SQL table or column name that has to be interpolated.
 
@@ -405,9 +434,11 @@ class FileManager:
         # no .suffix, so reading it here — before the file-like branch below —
         # raised AttributeError for every browser upload, which is the only
         # path all three "manual result upload" pages use.
+        dataset_id = safe_component(dataset_id, "dataset id")
         if file_name is None:
             suffix = Path(getattr(file, "name", "")).suffix if not isinstance(file, Path) else file.suffix
             file_name = f"{name_tag}{suffix}"
+        file_name = safe_component(file_name, "file name")
         
         target_path = Path(
                 self.cache_path, 'files', dataset_id, file_name
@@ -549,7 +580,10 @@ class FileManager:
 
         # Remove stored files. A dataset whose files are all linked has no
         # directory here at all, so this must tolerate its absence.
-        shutil.rmtree(Path(self.cache_path, 'files', dataset_id), ignore_errors=True)
+        # safe_component: this path is rmtree'd, so a ".." id would delete
+        # outside the cache.
+        shutil.rmtree(Path(self.cache_path, 'files', safe_component(dataset_id, 'dataset id')),
+                      ignore_errors=True)
 
     def clear_cache(self):
         shutil.rmtree(Path(self.cache_path, 'files'))

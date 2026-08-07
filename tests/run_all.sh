@@ -29,6 +29,7 @@ run() {
 
 run src/presets.py
 run tests/test_presets.py
+run tests/test_hosted_mode.py
 run tests/test_workspace_name.py
 run tests/test_filemanager_sql.py
 run tests/test_linked_files.py 1
