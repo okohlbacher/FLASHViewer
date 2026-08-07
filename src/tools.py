@@ -180,34 +180,96 @@ def _latest_log(log_dir):
 
 # ------------------------------------------------------------- tool descriptors
 
+class Role:
+    """One file role within one tool's dataset.
+
+    name_tag is LOAD-BEARING: parseDeconv(**results) works only because the
+    cache tags equal the parser's parameter names. Never rename one to prettify
+    a column header. (parseTnT's do NOT match, which is why it is called
+    positionally — see HANDOFF.md.)
+    """
+
+    def __init__(self, suffix, name_tag, label):
+        self.suffix = suffix
+        self.name_tag = name_tag
+        self.label = label
+
+
 class ToolSpec:
-    """The per-tool facts the wizard needs. Deliberately minimal.
+    """The per-tool facts the wizard and the data surface need.
 
     cache_subdir must equal WorkflowManager's workflow_dir.stem, which is
     name.lower(); the viewers derive the same path from hardcoded strings today.
     """
 
     def __init__(self, name, cache_subdir, required_tags, viewer_page,
-                 has_method, has_run):
+                 has_method, has_run, roles=(), extensions=()):
         self.name = name
         self.cache_subdir = cache_subdir
         self.required_tags = list(required_tags)
         self.viewer_page = viewer_page
         self.has_method = has_method
         self.has_run = has_run
+        self.roles = tuple(roles)
+        self.extensions = tuple(extensions)
+
+    def role_for(self, filename):
+        """The role a filename belongs to, or None.
+
+        Declaration order matters and is deliberate: FLASHQuant's ".tsv" is a
+        catch-all, so ".mts.tsv" and "_shared.tsv" must be tested before it.
+        """
+        for role in self.roles:
+            if filename.endswith(role.suffix):
+                return role
+        return None
+
+    def dataset_id_for(self, filename):
+        """(dataset_id, name_tag) for a filename, or None if it is not ours.
+
+        The stripped filename is a deliberate JOIN KEY, not a label:
+        sampleA_deconv.mzML and sampleA_annotated.mzML must collide into one
+        dataset. Uses split() rather than a slice to match the existing pages
+        exactly — they differ on pathological names.
+        """
+        role = self.role_for(filename)
+        if role is None:
+            return None
+        return filename.split(role.suffix)[0], role.name_tag
 
 
 TOOLS = {
     "FLASHDeconv": ToolSpec(
         "FLASHDeconv", "flashdeconv", ["deconv_dfs", "anno_dfs"],
-        "content/FLASHDeconv/FLASHDeconvViewer.py", True, True),
+        "content/FLASHDeconv/FLASHDeconvViewer.py", True, True,
+        roles=(
+            Role("_deconv.mzML", "out_deconv_mzML", "Deconvolved"),
+            Role("_annotated.mzML", "anno_annotated_mzML", "Annotated"),
+            Role("_spec1.tsv", "spec1_tsv", "MS1 TSV"),
+            Role("_spec2.tsv", "spec2_tsv", "MS2 TSV"),
+        ),
+        extensions=("mzML", "tsv")),
     "FLASHTnT": ToolSpec(
         "FLASHTnT", "flashtnt",
         ["deconv_dfs", "anno_dfs", "tag_dfs", "protein_dfs"],
-        "content/FLASHTnT/FLASHTnTViewer.py", True, True),
+        "content/FLASHTnT/FLASHTnTViewer.py", True, True,
+        roles=(
+            Role("_deconv.mzML", "out_deconv_mzML", "Deconvolved"),
+            Role("_annotated.mzML", "anno_annotated_mzML", "Annotated"),
+            Role("_tagged.tsv", "tags_tsv", "Tags"),
+            Role("_protein.tsv", "protein_tsv", "Proteins"),
+        ),
+        extensions=("mzML", "tsv")),
     # QuantWorkflow implements neither configure() nor execution(): the steps
     # are genuinely absent, not unimplemented.
     "FLASHQuant": ToolSpec(
         "FLASHQuant", "flashquant", ["quant_dfs"],
-        "content/FLASHQuant/FLASHQuantViewer.py", False, False),
+        "content/FLASHQuant/FLASHQuantViewer.py", False, False,
+        roles=(
+            # Order is load-bearing: ".tsv" is a catch-all and must come last.
+            Role(".mts.tsv", "trace_tsv", "Mass traces"),
+            Role("_shared.tsv", "conflict_tsv", "Conflicts"),
+            Role(".tsv", "quant_tsv", "Quant results"),
+        ),
+        extensions=("tsv",)),
 }

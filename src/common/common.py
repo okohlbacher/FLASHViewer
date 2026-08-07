@@ -654,7 +654,11 @@ def desktop_file_picker(label: str, file_types: list[str], key: str):
         key=f"{key}_path",
         placeholder="/path/to/data",
     )
-    if typed:
+    # An explicit action, not "there is text in the box". A keyed text_input
+    # keeps its value across reruns, so firing on presence re-ingested on every
+    # rerun and raced the st.rerun() the callers do — which is why pasting a
+    # path appeared to do nothing at all.
+    if c2.button("Add from path", key=f"{key}_path_add", disabled=not typed):
         source = Path(typed).expanduser()
         if not source.exists():
             c2.error(f"No such file or folder: {source}")
