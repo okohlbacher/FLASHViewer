@@ -93,9 +93,35 @@ def main():
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
+    method_only_ignores_input_selection()
+
     failed = [n for n, ok in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")
     return 1 if failed else 0
+
+
+
+
+def method_only_ignores_input_selection():
+    """Picking an input file must not mark the Method step as configured.
+
+    select_input_file writes the chosen files into params.json, so the whole-file
+    diff reported "Method: changed from defaults" as soon as a user chose an mzML
+    file on the Data step. Reproduced in the browser before the fix.
+    """
+    from src.workflow.ParameterManager import method_only
+
+    inp = "/ws/flashdeconv/input-files/mzML-files/example.mzML"
+    before = {"mzML-files": [], "threads": 4}
+    picked = {"mzML-files": [inp], "threads": 4}
+    tuned = {"mzML-files": [inp], "threads": 8}
+
+    check("choosing an input file is not a method change",
+          method_only(before) == method_only(picked))
+    check("changing a real parameter still is",
+          method_only(picked) != method_only(tuned))
+    check("a non-path list is kept as a method parameter",
+          "charges" in method_only({"charges": ["2", "3"]}))
 
 
 if __name__ == "__main__":

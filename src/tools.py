@@ -159,6 +159,16 @@ def run_state(workflow_dir):
         return "error", "Log could not be read", None
 
     age = format_age(time.time() - log.stat().st_mtime)
+
+    # Checked BEFORE "WORKFLOW FINISHED", not after. workflow_process() logs
+    # FINISHED whenever execution() returns without raising, so a TOPP tool that
+    # failed mid-run still reaches it. Reporting "done" for a run that produced
+    # nothing is the one failure this banner must not have.
+    failed = next((ln for ln in content.splitlines()
+                   if ln.startswith("ERROR") or "ERRORS OCCURRED" in ln), None)
+    if failed:
+        return "error", "Failed", failed.split(":", 1)[-1].strip()[:60]
+
     if "WORKFLOW FINISHED" in content:
         # The log is wiped at the start of every run and is per-tool, so this
         # describes the LATEST run only. Every caption is phrased that way, so

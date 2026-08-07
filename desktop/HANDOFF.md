@@ -210,3 +210,38 @@ fallback for each, rather than specifying chrome that needs a Vue fork.
   surface* in a browser — `tests/test_example_data.py` covers the same code path
   headlessly, but not the button.
 - `06-IMPLEMENTATION-PLAN.md` from handoff v4 is unread.
+
+## 8. Found during browser testing (post-v4)
+
+Three defects, found by running the app in browser mode rather than headlessly.
+
+**A silent no-op run reported success.** `execution()` validated its inputs with
+`st.error(...)` + `return`. But `execution()` runs in the *detached* workflow
+process, where `st.error` reaches no one, and `workflow_process()` then logged
+`WORKFLOW FINISHED` over a run that did nothing. Starting FLASHDeconv with no
+mzML selected produced an empty `results/`, a clean log, and a green wizard
+banner. Both validation sites now raise, so the message lands in the log.
+
+**The banner trusted `WORKFLOW FINISHED` alone.** That marker is written whenever
+`execution()` returns without raising, so a TOPP tool that failed mid-run still
+reached it. `run_state()` now checks for `ERROR` / `ERRORS OCCURRED` *before* the
+finished marker. This was the exact "a wrong done is worse than none" risk the
+plan flagged, and it had already materialised.
+
+**Picking an input file marked the Method step configured.** `select_input_file`
+writes into the same `params.json` as the method parameters, so the whole-file
+diff recorded method intent on a Data-step action. `method_only()` now excludes
+values that are paths under the workspace's own `input-files/` — recognised by
+value, not by a key naming convention or a widget registration order that render
+order controls.
+
+### Still open
+
+`Method: changed from defaults` can still be claimed after a run the user did not
+configure. Remaining cause is upstream of the wizard: `save_parameters()` stores
+`FLASHDeconv = {'SD:tol': '10.0\n10.0'}` as a non-default value although it *is*
+the ini default — the `ini_value != value` comparison does not hold for
+multi-valued TOPP parameters. Fixing it changes which parameters are written into
+`params.json` and therefore what reaches the tools, so it wants a deliberate
+change with its own test, not a drive-by. Cosmetic today: it over-reports
+configuration, never under-reports it.
