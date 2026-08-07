@@ -12,7 +12,6 @@ This test mirrors that decision, so the regression cannot come back silently.
 
 Run: python3 tests/test_input_listing.py
 """
-import os
 import shutil
 import sys
 import tempfile
@@ -28,22 +27,17 @@ def check(name, cond, detail=""):
     print(f"  {'ok  ' if cond else 'FAIL'}  {name}  {detail}")
 
 
+from src.tools import input_listing  # noqa: E402
+
+
 def listing(files_dir: Path, fallback):
-    """The branch logic from StreamlitUI.upload_widget, isolated.
+    """The branch decision from StreamlitUI.upload_widget.
 
-    Returns (used_fallback, current_files).
+    The listing itself now comes from src.tools.input_listing — the same
+    function the page calls — so this test guards the shipping code instead of
+    a copy of it that could stay green while the real one broke.
     """
-    external_index = files_dir / "external_files.txt"
-    external_list = []
-    if external_index.exists():
-        with open(external_index) as fh:
-            external_list = [
-                line for line in fh.read().splitlines()
-                if line and os.path.exists(line)
-            ]
-    copied_present = [f for f in files_dir.iterdir()
-                      if f.name != "external_files.txt"]
-
+    copied_present, external_list = input_listing(files_dir)
     if fallback and not copied_present and not external_list:
         return True, [f.name for f in copied_present]
     current = [f.name for f in copied_present]

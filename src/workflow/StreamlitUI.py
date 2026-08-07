@@ -15,6 +15,7 @@ from datetime import datetime
 from streamlit_js_eval import streamlit_js_eval
 
 
+from src.tools import input_listing
 from src.common.common import (
     OS_PLATFORM,
     TK_AVAILABLE,
@@ -290,16 +291,7 @@ class StreamlitUI:
         # files_dir looks empty, the fallback branch below wins, and it only ever
         # listed files_dir — so on desktop, where every added file is referenced,
         # picking a file appeared to do nothing at all.
-        external_index = Path(files_dir, "external_files.txt")
-        external_list = []
-        if external_index.exists():
-            with open(external_index) as fh:
-                external_list = [
-                    line for line in fh.read().splitlines()
-                    if line and os.path.exists(line)
-                ]
-        copied_present = [f for f in Path(files_dir).iterdir()
-                          if f.name != "external_files.txt"]
+        copied_present, external_list = input_listing(files_dir)
 
         if fallback and not copied_present and not external_list:
             c1, _ = st.columns(2)

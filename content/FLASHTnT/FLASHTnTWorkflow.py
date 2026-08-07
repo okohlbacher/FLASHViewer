@@ -70,15 +70,26 @@ with t[3]:
         if pending:
             _status = st.status(f"Parsing {len(pending)} dataset(s)…", expanded=True)
             _progress = _status.progress(0.0)
+        REQUIRED = ['out_deconv_mzML', 'anno_annotated_mzML', 'tags_tsv', 'protein_tsv']
         for _i, unparsed_dataset in enumerate(pending):
             _status.write(f"Parsing {unparsed_dataset} ({_i + 1}/{len(pending)})")
-            results = wf.file_manager.get_results(
-                unparsed_dataset, 
-                ['out_deconv_mzML', 'anno_annotated_mzML', 'tags_tsv', 'protein_tsv']
-            )
-            
+            results = wf.file_manager.get_results(unparsed_dataset, REQUIRED)
+
+            # get_results only returns tags whose column exists, and
+            # get_results_list drops absent columns from its AND query — so a
+            # dataset with only the two mzMLs reaches this point and used to
+            # raise a bare KeyError: 'tags_tsv'. FLASHTnT needs all four.
+            missing = [tag for tag in REQUIRED if tag not in results]
+            if missing:
+                _status.write(
+                    f":orange[Skipped {unparsed_dataset} — FLASHTnT needs all four "
+                    f"files; missing: {', '.join(missing)}]"
+                )
+                _progress.progress((_i + 1) / len(pending))
+                continue
+
             parsed_data = parseTnT(
-                results['out_deconv_mzML'], results['anno_annotated_mzML'], 
+                results['out_deconv_mzML'], results['anno_annotated_mzML'],
                 results['tags_tsv'], results['protein_tsv']
             )
 
