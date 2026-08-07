@@ -45,8 +45,26 @@ def compare_count(tool):
     return int(st.session_state.get(f"compare_count_{tool}", 1) or 1)
 
 
+# Every tool the app knows, not only the two with presets: this module is
+# reached for FLASHQuant the moment anything iterates all three, and a KeyError
+# here is a blank page rather than a message.
+CACHE_DIRS = {
+    "FLASHDeconv": "flashdeconv",
+    "FLASHTnT": "flashtnt",
+    "FLASHQuant": "flashquant",
+}
+
+
 def _cache_dir(tool):
-    return {"FLASHDeconv": "flashdeconv", "FLASHTnT": "flashtnt"}[tool]
+    try:
+        return CACHE_DIRS[tool]
+    except KeyError:
+        raise ValueError(f"unknown tool: {tool!r}") from None
+
+
+def has_presets(tool):
+    """FLASHQuant renders a single fixed grid and has no presets to choose."""
+    return bool(presets_mod.PRESETS.get(tool))
 
 
 def render(tool, required_tags):
@@ -166,12 +184,11 @@ def _render_interchange(tool):
                 st.error("That file contains no layout.")
                 return
 
-            known = set(presets_mod.PREREQUISITES[tool]) | set(
-                presets_mod.PREREQUISITES[tool].values()
-            )
+            prereqs = presets_mod.PREREQUISITES.get(tool, {})
+            known = set(prereqs) | set(prereqs.values())
             unknown = [
                 c for row in layout[0] for c in row
-                if c not in known and c not in _EXTRA_COMPONENTS[tool]
+                if c not in known and c not in _EXTRA_COMPONENTS.get(tool, set())
             ]
             if unknown:
                 st.error(f"Unknown component(s) for {tool}: {', '.join(sorted(set(unknown)))}")

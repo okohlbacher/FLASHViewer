@@ -199,7 +199,7 @@ with t[3]:
     st.dataframe(pd.DataFrame(table))
 
     # Remove files
-    with st.expander("Remove mzML files"):
+    with st.expander("Remove datasets"):
         to_remove = st.multiselect(
             "select files", options=experiments
         )

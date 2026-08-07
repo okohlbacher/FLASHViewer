@@ -14,7 +14,7 @@ params = page_setup()
 
 wf = QuantWorkflow()
 
-st.title("File Upload")
+st.title("Add data")
 
 def process_uploaded_files(uploaded_files):
         
@@ -49,11 +49,29 @@ def process_uploaded_files(uploaded_files):
         parsed_tsv_files = set(wf.file_manager.get_results_list(['conflict_resolution_dfs']))
         unparsed_tsv_files = (tsv_files - parsed_tsv_files) & input_files
 
-        # Process unparsed datasets
-        for unparsed_dataset in (unparsed_files | unparsed_tsv_files):
+        # Process unparsed datasets. Parsing is a phase of the work, not a
+        # silent gap after it: on real data this runs for minutes. FLASHQuant
+        # never got this when the other two did — the cost of three copies.
+        pending = sorted(unparsed_files | unparsed_tsv_files)
+        if pending:
+            _status = st.status(f"Parsing {len(pending)} dataset(s)…", expanded=True)
+            _progress = _status.progress(0.0)
+        for _i, unparsed_dataset in enumerate(pending):
+            _status.write(f"Parsing {unparsed_dataset} ({_i + 1}/{len(pending)})")
             results = wf.file_manager.get_results(
                 unparsed_dataset, ['quant_tsv', 'trace_tsv']
             )
+
+            # FLASHQuant needs both; a lone quant or trace file would otherwise
+            # raise a bare KeyError, as FLASHTnT did.
+            missing = [t for t in ('quant_tsv', 'trace_tsv') if t not in results]
+            if missing:
+                _status.write(
+                    f":orange[Skipped {unparsed_dataset} — needs both files; "
+                    f"missing: {', '.join(missing)}]"
+                )
+                _progress.progress((_i + 1) / len(pending))
+                continue
 
             conflict_results = None
             if wf.file_manager.result_exists(unparsed_dataset, 'conflict_tsv'):
@@ -67,6 +85,11 @@ def process_uploaded_files(uploaded_files):
 
             for k, v in parsed_data.items():
                 wf.file_manager.store_data(unparsed_dataset, k, v)
+            _progress.progress((_i + 1) / len(pending))
+
+        if pending:
+            _status.update(label=f"Parsed {len(pending)} dataset(s)", state="complete",
+                           expanded=False)
 
 
 tabs = st.tabs(["File Upload", "Example Data"])
@@ -171,7 +194,7 @@ st.markdown('**Uploaded experiments in current workspace**')
 st.dataframe(pd.DataFrame(table))
 
 # Remove files
-with st.expander("Remove mzML files"):
+with st.expander("Remove datasets"):
     to_remove = st.multiselect(
         "select files", options=experiments
     )
