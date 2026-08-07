@@ -1,6 +1,6 @@
 {
   "name": "flashapp-desktop",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "description": "FLASHApp as a cross-platform desktop app (Electron + bundled Python)",
   "main": "main.js",
   "scripts": {

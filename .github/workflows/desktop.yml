@@ -110,4 +110,15 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
-          files: artifacts/*
+          # Recursive: upload-artifact computes the archive root from the least
+          # common ancestor of the matched files, so a multi-path `path:` keeps a
+          # `dist/` prefix and the installers land one level below `artifacts/`.
+          # `artifacts/*` matched only directories and attached nothing.
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.AppImage
+            artifacts/**/*.exe
+          # Without this the step prints "does not match any files" and still
+          # succeeds, producing an empty release that looks published. Tagging
+          # must fail loudly instead.
+          fail_on_unmatched_files: true
