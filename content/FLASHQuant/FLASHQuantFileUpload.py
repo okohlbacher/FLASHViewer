@@ -16,6 +16,17 @@ wf = QuantWorkflow()
 
 st.title("Add data")
 
+# Wizard banner. Mounted ABOVE st.tabs deliberately: it must not sit inside a
+# tab body, because st.tabs renders every body on load and execution() depends
+# on that. State is derived in src/tools.py; nothing here constructs a
+# FileManager for another tool.
+from src import wizard
+from src.tools import TOOLS
+_spec = TOOLS["FLASHQuant"]
+_files_dir = Path(wf.workflow_dir, "input-files", "mzML-files")
+_selected = wizard.selected_names(wf.params, "mzML-files")
+wizard.banner(wizard.build_steps(_spec, wf, wf.params, _files_dir, _selected))
+
 def process_uploaded_files(uploaded_files):
         
         # Store all uploaded files

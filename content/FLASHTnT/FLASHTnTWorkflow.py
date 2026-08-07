@@ -15,6 +15,17 @@ wf = TagWorkflow()
 
 st.title('FLASHTnT - Tag and Extend')
 
+# Wizard banner. Mounted ABOVE st.tabs deliberately: it must not sit inside a
+# tab body, because st.tabs renders every body on load and execution() depends
+# on that. State is derived in src/tools.py; nothing here constructs a
+# FileManager for another tool.
+from src import wizard
+from src.tools import TOOLS
+_spec = TOOLS["FLASHTnT"]
+_files_dir = Path(wf.workflow_dir, "input-files", "mzML-files")
+_selected = wizard.selected_names(wf.params, "mzML-files")
+wizard.banner(wizard.build_steps(_spec, wf, wf.params, _files_dir, _selected))
+
 t = st.tabs(["**Data**", "**Method**", "**Run**", "**Add results**"])
 with t[0]:
     wf.show_file_upload_section()
