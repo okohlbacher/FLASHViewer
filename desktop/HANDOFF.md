@@ -6,7 +6,7 @@ cross-platform desktop app and cleaning up what that exposed.
 Branch `desktop` on `okohlbacher/FLASHViewer`, forked from `t0mdavid-m/FLASHViewer`
 at `develop`. Draft PR: t0mdavid-m/FLASHViewer#90.
 
-Test suite: `tests/run_all.sh` — 11 files. Each skips cleanly rather than passing
+Test suite: `tests/run_all.sh` — 17 files. Each skips cleanly rather than passing
 falsely when a prerequisite (example data, a FLASHDeconv binary) is absent.
 
 ---
@@ -37,7 +37,9 @@ branch to upstream, independently of the desktop app.**
 | `preset_page._cache_dir()` raises `KeyError` for `"FLASHQuant"`, plus three more FLASHQuant `KeyError`s in that module | Unreachable today (only the two Layout Manager pages call it). Becomes reachable the moment anything iterates all three tools |
 | The Download zip is cached as `download_archive` and never invalidated | A re-run of the same dataset id serves a stale archive |
 | A killed app leaves `pids/` behind, so the app believes a run is still executing | Pre-existing; the Run step status inherits it |
-| Destructive actions have no confirmation | `Remove all` → `clear_cache()` (×3), `Delete Workspace`, and a per-experiment delete button whose entire label is the experiment name |
+| ~~Destructive actions have no confirmation~~ | Fixed: typed confirmation for `Remove all`, a listing dialog for `Remove selected` |
+| **FLASHQuant's two ingest routes derive different dataset ids** | The example-data button strips the glob `.fq.tsv` → `example`; the picker and uploader strip the role suffix `.tsv` → `example.fq`. Loading the examples and adding the same files by hand yields **two datasets for one experiment**. FLASHDeconv and FLASHTnT agree on both routes. Not normalised: the id is the join key existing workspaces are keyed on, so changing either route orphans data already in a cache. Needs a decision on which is canonical |
+| The paste-a-path box fired on text presence | Fixed: it is now an explicit "Add from path" button. A keyed `text_input` keeps its value across reruns, so the old form re-ingested every rerun and raced the caller's `st.rerun()` |
 | `src/fileupload.py` (all five functions) and `content/TODO_Update/*` are dead | Unreferenced; deleting them belongs in its own change |
 
 ---
@@ -171,3 +173,40 @@ In-flight cleanup plan and its adversarial review:
 - **The run log is wiped at the start of every run** and is per-tool, not per-dataset.
   There is no persisted record that a run completed, only `WORKFLOW FINISHED` in the
   current log.
+
+---
+
+## 7. What the wizard/data work added
+
+Landed from design handoff v4 (`../design-reviews/handoff-v4/`), which is the
+first of four handoffs that survived review largely intact — it shipped a
+`05-STREAMLIT-LIMITS.md` enumerating what Streamlit cannot express and gave a
+fallback for each, rather than specifying chrome that needs a Vue fork.
+
+- **Recorded intent** (`<workflow_dir>/intent/{data,method}.json`). The one code
+  change the design required, and it overrides the earlier "derive everything"
+  decision for a good reason: `upload_widget` auto-copies example files when its
+  directory is empty, and `save_parameters()` runs on every widget render, so
+  both naive signals are true before the user has acted. Written only where a
+  user action actually reached. Existing workspaces are not migrated, so a
+  missing marker means *unknown*, never *no*.
+- **The wizard banner** (`src/wizard.py` + `run_state`/`TOOLS` in `src/tools.py`).
+  Six states including `skipped`, which is what makes FLASHQuant's absent Method
+  and Run read as deliberate rather than broken.
+- **File roles per tool** on `ToolSpec`, replacing the hand-written suffix
+  chains. Two properties are load-bearing and tested: declaration order
+  (FLASHQuant's `.tsv` is a catch-all) and the stripped filename as a join key.
+- **`src/data_surface.py`**, one add/list/remove surface. Wired on FLASHQuant
+  only so far — 237 lines to 83. FLASHDeconv and FLASHTnT still have their own
+  copies, deliberately: the three have diverged and merging all at once would
+  change behaviour unnoticed.
+- **Confirmations** (`src/confirm.py`) for the two unbounded deletes.
+
+### Still to do
+
+- Migrate FLASHDeconv and FLASHTnT onto `data_surface`. Read each diff first;
+  known drifts are listed in `../design-reviews/handoff-v4/03-DATA-SURFACE.md`.
+- The example-load click has not been exercised end to end *through the new
+  surface* in a browser — `tests/test_example_data.py` covers the same code path
+  headlessly, but not the button.
+- `06-IMPLEMENTATION-PLAN.md` from handoff v4 is unread.
