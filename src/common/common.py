@@ -21,6 +21,7 @@ except ImportError:
     TK_AVAILABLE = False
 
 from src.common.captcha_ import captcha_control
+from src import confirm
 
 # Detect system platform
 OS_PLATFORM = sys.platform
@@ -341,15 +342,41 @@ def _render_workspace_controls():
                     # Temporary as the query update takes a short amount of time
                     time.sleep(1)
                     st.rerun()
-                # Remove existing workspace and fall back to default
-                if st.button("Delete Workspace", disabled=not safe_name):
+                # Remove existing workspace and fall back to default.
+                # Confirms INLINE, not in a dialog: this already runs inside
+                # @st.dialog("Settings · Workspace") and Streamlit permits one
+                # dialog at a time — nesting raises.
+                if st.button("Delete Workspace", disabled=not safe_name,
+                             icon=":material/delete_forever:"):
+                    st.session_state["armed_delete_workspace"] = safe_name
+
+                if safe_name and st.session_state.get("armed_delete_workspace") == safe_name:
                     if safe_name == "default":
                         st.error("The default workspace cannot be deleted.")
-                    elif path.exists():
-                        shutil.rmtree(path)
-                        st.session_state.workspace = Path(workspaces_dir, "default")
-                        st.query_params.workspace = "default"
-                        st.rerun()
+                    elif not path.exists():
+                        st.error(f"No workspace named {safe_name}.")
+                    else:
+                        def _delete_workspace():
+                            # valid_workspace_name() still guards the join above;
+                            # this confirmation is a second layer, never a
+                            # replacement for the validation that fixed the bug
+                            # where an absolute path deleted that directory.
+                            shutil.rmtree(path)
+                            st.session_state.pop("armed_delete_workspace", None)
+                            st.session_state.workspace = Path(workspaces_dir, "default")
+                            st.query_params.workspace = "default"
+                            st.rerun()
+
+                        confirm.confirm_typed_inline(
+                            title="Delete workspace",
+                            body=(f"Deletes {path} and everything in it: parameters, "
+                                  "all three tool caches, and every dataset. "
+                                  "This cannot be undone."),
+                            phrase=safe_name,
+                            confirm_label=f"Delete {safe_name}",
+                            on_confirm=_delete_workspace,
+                            key="confirm_delete_workspace",
+                        )
 
     return params
 

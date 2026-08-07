@@ -7,6 +7,7 @@ from src.Workflow import DeconvWorkflow
 from src.parse.deconv import parseDeconv
 from src.common.common import page_setup, desktop_file_picker
 from src.workflow.StreamlitUI import DESKTOP
+from src import confirm
 
 
 params = page_setup()
@@ -222,7 +223,20 @@ with t[3]:
                 wf.file_manager.remove_results(dataset_id)
             st.rerun()
 
-        if c1.button("Remove **all**"):
-            wf.file_manager.clear_cache()
-            st.success("All files removed!")
-            st.rerun()
+        # Unbounded and unrecoverable: clear_cache() drops both SQLite tables and
+        # rmtree's <cache>/files. It had no confirmation at all.
+        if c1.button("Remove **all**", icon=":material/delete_forever:"):
+            st.session_state["armed_clear_FLASHDeconv"] = True
+        if st.session_state.get("armed_clear_FLASHDeconv"):
+            def _clear_FLASHDeconv():
+                wf.file_manager.clear_cache()
+                st.session_state.pop("armed_clear_FLASHDeconv", None)
+                st.rerun()
+            confirm.confirm_typed(
+                title="Remove every FLASHDeconv dataset",
+                body="This deletes every dataset in this workspace for FLASHDeconv, "
+                     "including parsed results. It cannot be undone.",
+                phrase="FLASHDeconv",
+                confirm_label="Remove all FLASHDeconv datasets",
+                on_confirm=_clear_FLASHDeconv,
+            )
