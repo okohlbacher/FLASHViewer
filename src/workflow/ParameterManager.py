@@ -1,5 +1,7 @@
 import pyopenms as poms
 import json
+
+from src.tools import record_intent
 import shutil
 import streamlit as st
 from pathlib import Path
@@ -73,9 +75,24 @@ class ParameterManager:
                     ):
                         # store non-default value
                         json_params[tool][key.split(":1:")[1]] = value
+        # Record deliberate parameter change — but ONLY when the dict actually
+        # differs from what is already on disk. This method runs on every widget
+        # render (input_widget / input_TOPP call it unconditionally), so the mere
+        # existence of params.json proves nothing about user intent; that is why
+        # the wizard cannot derive "Method configured" from the file existing.
+        previous = None
+        if self.params_file.exists():
+            try:
+                previous = json.loads(self.params_file.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                previous = None
+
         # Save to json file
         with open(self.params_file, "w", encoding="utf-8") as f:
             json.dump(json_params, f, indent=4)
+
+        if previous is not None and json_params != previous:
+            record_intent(self.params_file.parent, "method")
 
     def get_parameters_from_json(self) -> None:
         """

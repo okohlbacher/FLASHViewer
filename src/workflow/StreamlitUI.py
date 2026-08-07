@@ -15,7 +15,7 @@ from datetime import datetime
 from streamlit_js_eval import streamlit_js_eval
 
 
-from src.tools import input_listing
+from src.tools import input_listing, record_intent
 from src.common.common import (
     OS_PLATFORM,
     TK_AVAILABLE,
@@ -132,6 +132,8 @@ class StreamlitUI:
                             ] and any(f.name.endswith(ft) for ft in file_types):
                                 with open(Path(files_dir, f.name), "wb") as fh:
                                     fh.write(f.getbuffer())
+                        record_intent(self.workflow_dir, "data",
+                                      source="upload", count=len(files))
                         st.success("Successfully added uploaded files!")
                         st.rerun()
                     else:
@@ -183,6 +185,8 @@ class StreamlitUI:
                         my_bar.empty()
                         st.success("Successfully added files!")
 
+                        record_intent(self.workflow_dir, "data",
+                                      source="reference", count=len(local_files))
                         st.session_state["previous_dir"] = Path(local_files[0]).parent
                         st.rerun()
 
