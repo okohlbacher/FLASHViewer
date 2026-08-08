@@ -11,12 +11,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # No Intel macOS build: the macos-13 runners queued for hours and were
-          # dropped deliberately. Note this leaves Intel Macs with NOTHING —
-          # Rosetta translates x86 -> Apple Silicon, not the reverse, so an
-          # Intel Mac cannot run the arm64 .dmg. Add an Intel target here if
-          # those users matter.
-          - { os: macos-14,         target: macOS-arm64  }
+          # Intel macOS is built again. Rosetta translates x86 -> Apple Silicon,
+          # not the reverse, so without this an Intel Mac has nothing to run.
+          # The label matters: macos-13 is retired and macos-14 is deprecated
+          # (GitHub brownouts then removes deprecated images), so both macOS
+          # targets sit on 15.
+          - { os: macos-15,         target: macOS-arm64  }
+          - { os: macos-15-intel,   target: macOS-x64    }
           - { os: ubuntu-24.04,     target: Linux-x64    }
           - { os: ubuntu-24.04-arm, target: Linux-arm64  }
           - { os: windows-2022,     target: Windows-x64  }
