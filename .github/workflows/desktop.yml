@@ -11,8 +11,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # No macos-13 (Intel): those runners queue for hours and Apple Silicon
-          # Macs run the arm64 build natively, older ones under Rosetta.
+          # No Intel macOS build: the macos-13 runners queued for hours and were
+          # dropped deliberately. Note this leaves Intel Macs with NOTHING —
+          # Rosetta translates x86 -> Apple Silicon, not the reverse, so an
+          # Intel Mac cannot run the arm64 .dmg. Add an Intel target here if
+          # those users matter.
           - { os: macos-14,         target: macOS-arm64  }
           - { os: ubuntu-24.04,     target: Linux-x64    }
           - { os: ubuntu-24.04-arm, target: Linux-arm64  }
