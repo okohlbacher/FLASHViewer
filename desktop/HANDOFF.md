@@ -245,3 +245,30 @@ multi-valued TOPP parameters. Fixing it changes which parameters are written int
 `params.json` and therefore what reaches the tools, so it wants a deliberate
 change with its own test, not a drive-by. Cosmetic today: it over-reports
 configuration, never under-reports it.
+
+## 9. The released builds ship no TOPP tools
+
+`build.sh` copies the TOPP binaries from `$OPENMS_BIN`, and CI never sets it, so
+every published installer contains an empty `topp/`. build.sh says so itself —
+`note: OPENMS_BIN unset, building without TOPP tools (Workflow pages will not
+run)` — but it is a note in a build log, not a release note, so the shipped app
+looks complete and then cannot run FLASHDeconv or FLASHTnT.
+
+What the released app CAN do: add existing FLASHDeconv/FLASHTnT/FLASHQuant
+output files and explore them in the viewers. That is a real use case and the
+one FLASHQuant supports exclusively. What it CANNOT do: run a workflow.
+
+Fixing this means building OpenMS per platform in CI (hours per target, and the
+arm64/x64 macOS split doubles it) or downloading prebuilt TOPP binaries for each
+of the five targets. Neither is a small change, and neither should happen
+silently — it needs a decision about where those binaries come from.
+
+Until then the release description should say the desktop app is a viewer for
+existing results, not a self-contained analysis pipeline.
+
+### Verified on the Intel build
+
+macOS x64 (`macos-15-intel`) was checked end to end: both the Electron binary
+and the bundled CPython report `x86_64`, the app launches, Streamlit answers
+HTTP 200 on its random loopback port, and the Electron dialog server still
+returns 403 without a token.
